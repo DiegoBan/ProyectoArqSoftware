@@ -1,0 +1,13 @@
+services:
+  db:
+    build:
+      context: ./DB
+      dockerfile: Dockerfile
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: colocolo
+      POSTGRES_DB: db
+    ports:
+      - "5432:5432"
