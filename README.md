@@ -20,9 +20,10 @@ docker compose up --build -d
 
 ### Base de Datos
 Como base de datos utilizamos postgreSQL, ya que gracias a su modelo relacional y estructura permite crear las relaciones necesarias sin problemas a la vez que se mantienen los datos consistentemente, cumpliendo con las propiedades ACID (Atomicidad, Consistencia, Aislamiento y Durabilidad), algo de suma importancia para un software al que no se le puede pasar por alto nada.
+
 <p align="center">
-    <img src=".DB/documentacion/entidad_relacion.png" alt="entidad-relacion" />
+    <img src="./DB/documentacion/entidad_relacion.png" alt="entidad-relacion" />
 </p>
 <p align="center">
-    <img src=".DB/documentacion/modelo_relacional.png" alt="modelo relacional" />
+    <img src="./DB/documentacion/modelo_relacional.png" alt="modelo relacional" />
 </p>
