@@ -7,25 +7,31 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: colocolo
+      POSTGRES_PASSWORD: colocolo # Contraseña posibilemente modificable en un futuro: utilizandola a través de .env y no directamente hardcodeada en dockercompose
       POSTGRES_DB: db
     ports:
       - "5432:5432"
+  
   bus:
     image: jrgiadach/soabus:v1
     container_name: bus
     restart: unless-stopped
     ports:
       - "5000:5000"
+  
   usuario:
     image: python:3.10-slim
     container_name: servicio_usuario
     environment:
       - PYTHONUNBUFFERED=1
+      - DB:HOST=db
+      - DB_USER=admin
+      - DB_PASS=colocolo
+      - DB_NAME=db
     volumes: 
       - ./Usuarios:/app
     working_dir: /app
-    command: python usuarios.py
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python usuarios.py"
     depends_on:
       - bus
-    
+      - db

@@ -18,6 +18,10 @@ Para levantar el proyecto se utiliza el siguiente comando en la carpeta principa
 docker compose up --build -d
 ```
 
+## Cliente
+
+## Servicios
+
 ### Base de Datos
 Como base de datos utilizamos postgreSQL, ya que gracias a su modelo relacional y estructura permite crear las relaciones necesarias sin problemas a la vez que se mantienen los datos consistentemente, cumpliendo con las propiedades ACID (Atomicidad, Consistencia, Aislamiento y Durabilidad), algo de suma importancia para un software al que no se le puede pasar por alto nada.
 
@@ -27,6 +31,11 @@ Como base de datos utilizamos postgreSQL, ya que gracias a su modelo relacional 
 <p align="center">
     <img src="./DB/documentacion/modelo_relacional.png" alt="modelo relacional" />
 </p>
+
+En caso de querer acceder a la consola del contenedor con postgreSQL, ejecuta:
+```
+docker exec -it postgres_db psql -U admin -d db
+```
 
 La librería utilizada para conectar PostgresSQL con Python será 'psycopg2'.
 

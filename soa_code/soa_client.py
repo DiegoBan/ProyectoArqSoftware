@@ -1,4 +1,4 @@
-from Usuarios.soa_lib import connect_to_bus, send_message, receive_message
+from soa_lib import connect_to_bus, send_message, receive_message
 
 sock = connect_to_bus()
 
