@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, crear_usuario
+from functions import dbconnect, crear_usuario, iniciar_sesion
 import json
 
 sock = connect_to_bus()
@@ -20,6 +20,7 @@ try:
     if db is None:
         exit()
     # Bucle principal de trabajo
+    print("Entrando en bucle principal de trabajo...")
     while True:
         data = receive_message(sock)
         if not data:
@@ -34,9 +35,9 @@ try:
         match accion:
             case "crear_usuario":
                 crear_usuario(db, datos_json)
-            #case "iniciar_sesion":
-            case "Modificar":
-                print(f"Modificando emnpleado con datos {mensaje}")
+            case "iniciar_sesion":
+                datos_json = iniciar_sesion(db, datos_json)
+                send_message(sock, "clien", datos_json) #   "clien" es cliente, debe cambiar según como se programe el front
 
 except Exception as e:
     print(f"Error en el servicio: {e}")

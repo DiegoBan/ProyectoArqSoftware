@@ -55,4 +55,43 @@ def crear_usuario(db, datos_json):
     print('Query enviada a base de datos, esperando respuesta...')
     """
 
-# def iniciar_sesion(db, datos_json):
+def iniciar_sesion(db, datos_json):
+    print("Intento de login...")
+    query = """
+        SELECT id, password_hash, nombre, rol
+        FROM usuarios
+        WHERE email = %s;
+    """
+    try:
+        db.execute(query, (datos_json["email"],))
+        usuario = db.fetchone()
+        if not usuario:
+            print("login error: Usuario no encontrado")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "Usuario no encontrado"
+            })
+        id_user, hash_user, nombre_user, rol_user = usuario
+        if hash_user == datos_json["password_hash"]:
+            print(f"Login exitoso para usuario ID: {id_user}")
+            return json.dumps({
+                "estado": "ok",
+                "mensaje": "autenticación exitosa",
+                "usuario": {
+                    "id": id_user,
+                    "nombre": nombre_user,
+                    "rol": int(rol_user)
+                }
+            })
+        else:
+            print("Intento del login fallido: password incorrecta")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "password incorrecta"
+            })
+    except Exception as e:
+        print(f"Error en consulta de login: {e}")
+        return json.dumps({
+            "estado": "error",
+            "mensaje": "error interno del servidor"
+        })
