@@ -27,3 +27,42 @@ Como base de datos utilizamos postgreSQL, ya que gracias a su modelo relacional 
 <p align="center">
     <img src="./DB/documentacion/modelo_relacional.png" alt="modelo relacional" />
 </p>
+
+La librería utilizada para conectar PostgresSQL con Python será 'psycopg2'.
+
+### Servicio Usuario
+El servicio **Usuario** tiene la responsabilidad de gestionar las operaciones lógicas sobre la tabla `Usuarios` en la base de datos. Actúa como intermediario: recibe la petición del servicio *Cliente*, valida la información de negocio y construye la consulta SQL para enviarla al servicio *Base de Datos* a través del bus.
+
+**Librerías utilizadas:**
+* `time`: Para manejo de pausas o marcas de tiempo.
+* `json`: Para la serialización y deserialización de mensajes.
+* `soa_lib`: Para la comunicación por sockets con el Bus SOA.
+
+### Tareas del Servicio
+
+#### 1. Crear usuario (`crear_usuario`)
+Cuando un cliente solicita registrar un nuevo usuario, el servicio espera recibir un JSON con la acción y los datos correspondientes.
+
+**JSON recibido desde el Cliente:**
+```json
+{
+  "accion": "crear_usuario",
+  "rut": "12.345.678-9",
+  "email": "el7@colocolo.cl",
+  "password_hash": "$2b$12$K3B...hash_de_la_contraseña...",
+  "nombre": "Esteban",
+  "apellido": "Paredes",
+  "rol": "usuario",
+  "telefono": "+56912345678",
+  "Fecha_nacimiento": "1980-08-01"
+}
+```
+**JSON enviado a BD:**
+```json
+{
+  "accion": "crear_usuario",
+  "query": "INSERT INTO Usuarios (rut, email, password_hash, nombre, apellido, rol, telefono, Fecha_nacimiento) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);",
+  "valores": ["12.345.678-9", "el7@colocolo.cl", "$2b$12$K3B...", "Esteban", "Paredes", "usuario", "+56912345678", "1980-08-01"]
+}
+
+```
