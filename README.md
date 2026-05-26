@@ -66,14 +66,6 @@ Cuando un cliente solicita registrar un nuevo usuario, el servicio espera recibi
   "Fecha_nacimiento": "1980-08-01"
 }
 ```
-**JSON enviado a BD:**
-```json
-{
-  "accion": "crear_usuario",
-  "query": "INSERT INTO Usuarios (rut, email, password_hash, nombre, apellido, rol, telefono, Fecha_nacimiento) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);",
-  "valores": ["12.345.678-9", "el7@colocolo.cl", "$2b$12$K3B...", "Esteban", "Paredes", "usuario", "+56912345678", "1980-08-01"]
-}
-```
 
 #### 2. iniciar sesión (`iniciar_sesion`)
 Cuando un cliente solicita iniciar sesión en su cuenta previamente registrada, el servicio espera recibir un JSON con la acción y los datos correspondientes.

@@ -21,39 +21,67 @@ def dbconnect():
         return None
 
 def crear_usuario(db, datos_json):
-    print(f"Creando usuario")
+    print(f"<--- Creando usuario --->")
     print('Datos a enviar:', json.dumps(datos_json))
+    
+    query = """
+        INSERT INTO usuarios (rut, email, password_hash, nombre, apellido, rol, telefono, Fecha_nacimiento) 
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
     """
-    # <--- Verificaciones --->
-    if datos_json["user"] != 'pepito': # Los usuarios que se tienen que verificar se tiene que arreglar mas adelante
-        respuesta_error = {
+    verify = """
+        SELECT rut FROM usuarios 
+        WHERE rol = 'admin';
+    """
+    
+    try :
+        # <--- Verificaciones --->
+        db.execute(verify)
+        admins = db.fetchall()
+        admins = [fila[0] for fila in admins]
+        if datos_json["user"] not in admins: # Los usuarios que se tienen que verificar se tiene que arreglar mas adelante
+            return json.dumps({
+                "estado": "error",
+                "tipo": "Usuario no verificado",
+                "mensaje": "No se pudo crear el usuario porque el usuario no es administrador.",
+                "detalles": {
+                    "User": "El usuario no es administrador"
+                }
+            })
+        else:
+            # <--- Envio de query a BD --->
+            rut = datos_json.get("rut")
+            email = datos_json.get("email")
+            contrasena = datos_json.get("password_hash")
+            nombre = datos_json.get("nombre")
+            apellido = datos_json.get("apellido")
+            rol = datos_json.get("rol")
+            telefono = datos_json.get("telefono")
+            fecha_nacimiento = datos_json.get("Fecha_nacimiento")
+        
+            db.execute(query, (rut, email, contrasena, nombre, apellido, rol, telefono, fecha_nacimiento))
+            db.connection.commit()
+            print('Query enviada a base de datos, esperando respuesta...')
+            
+            return json.dumps({
+                "estado": "ok",
+                "mensaje": "Creación exitosa",
+                "detalles": {
+                    "rut": rut,
+                    "email": email,
+                    "contrasena": contrasena,
+                    "nombre": nombre,
+                    "apellido": apellido,
+                    "rol": rol,
+                    "telefono": telefono,
+                    "fecha_nacimiento": fecha_nacimiento
+                }
+            })
+    except Exception as e:
+        print(f"Error en creación de usuario: {e}")
+        return json.dumps({
             "estado": "error",
-            "tipo": "Usuario no verificado",
-            "mensaje": "No se pudo crear el usuario porque el usuario no es administrador.",
-            "detalles": {
-                "User": "El usuario no esta verificado"
-            }
-        }
-        send_message(sock, "Usuario", json.dumps(respuesta_error))
-                
-    # <--- Envio de query a BD --->
-    rut = datos_json.get("rut")
-    email = datos_json.get("email")
-    contrasena = datos_json.get("password_hash")
-    nombre = datos_json.get("nombre")
-    apellido = datos_json.get("apellido")
-    rol = datos_json.get("rol")
-    telefono = datos_json.get("telefono")
-    fecha_nacimiento = datos_json.get("Fecha_nacimiento")
-                
-    mensaje_bd = {
-        'accion': 'crear_usuario',
-        'query': 'insert into Usuarios (rut, email, password_hash, nombre, apellido, rol, telefono, Fecha_nacimiento) values (%s,%s,%s,%s,%s,%s,%s,%s);',
-        'values': [rut, email, contrasena, nombre, apellido, rol, telefono, fecha_nacimiento]
-        }
-    send_message(sock, 'db', json.dumps(mensaje_bd))
-    print('Query enviada a base de datos, esperando respuesta...')
-    """
+            "mensaje": "error interno del servidor"
+        })
 
 def iniciar_sesion(db, datos_json):
     print("Intento de login...")
