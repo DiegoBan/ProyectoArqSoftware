@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password_hash VARCHAR(255) NOT NULL,
     nombre VARCHAR(80) NOT NULL,
     apellido VARCHAR(80) NOT NULL,
-    rol NUMERIC(1, 0) NOT NULL,
+    rol VARCHAR(10) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     Fecha_nacimiento DATE NOT NULL
 );
