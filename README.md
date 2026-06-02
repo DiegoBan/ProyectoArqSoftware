@@ -20,6 +20,17 @@ docker compose up --build -d
 
 ## Cliente
 
+### Librerias FrontEnd
+usar el comando 
+```
+pip install -r requirements.txt
+```
+Luego para iniciar el front se debe ejecutar en la carpeta "FrontEnd" el siguiente comando.
+```
+python main.py
+```
+De esa forma se usa ejecutaran las vistas de la aplicación 
+
 ## Servicios
 
 ### Base de Datos
