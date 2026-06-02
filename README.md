@@ -67,7 +67,7 @@ Cuando un cliente solicita registrar un nuevo usuario, el servicio espera recibi
 }
 ```
 
-#### 2. iniciar sesión (`iniciar_sesion`)
+#### 2. Iniciar sesión (`iniciar_sesion`)
 Cuando un cliente solicita iniciar sesión en su cuenta previamente registrada, el servicio espera recibir un JSON con la acción y los datos correspondientes.
 
 **JSON recibido desde el Cliente**
@@ -76,5 +76,56 @@ Cuando un cliente solicita iniciar sesión en su cuenta previamente registrada, 
   "accion": "iniciar_sesion",
   "email": "el7@colocolo.cl",
   "password_hash": "$2b$12$K3B...hash_de_la_contraseña..."
+}
+```
+
+#### 3. Modificar rol (`modificar_rol`)
+Cuando un administrador desea cambiar el rol de un usuario del sistema, primero debe encontrarse debidamente logeado con anterioridad y tener un rol apto para realizar tal cambio. La función espera recibir un JSON de la siguiente manera.
+
+**JSON recibido desde el Cliente**
+```json
+{
+  "accion": "modificar_rol",
+  "modificador_id": "3",
+  "modificar_id": "7",
+  "nuevo_rol": "vendedor"
+}
+```
+
+El cliente recibirá un json según el resultado de la operación:
+
+- Usuario de modificador no encontrado:
+```json
+{
+  "estado": "error",
+  "mensaje": "Usuario modificador no encontrado"
+}
+```
+- Modificador no es admin:
+```json
+{
+  "estado": "error",
+  "mensaje": "Usuario no es admin"
+}
+```
+- Error interno:
+```json
+{
+  "estado": "error",
+  "mensaje": "error interno del servidor"
+}
+```
+- Usuario a modificar no existe
+```json
+{
+  "estado": "error",
+  "mensaje": "Usuario a modificar no existe"
+}
+```
+- Modificación con éxito
+```json
+{
+  "estado": "ok",
+  "mensaje": "rol modificado"
 }
 ```

@@ -108,7 +108,7 @@ def iniciar_sesion(db, datos_json):
                 "usuario": {
                     "id": id_user,
                     "nombre": nombre_user,
-                    "rol": int(rol_user)
+                    "rol": rol_user
                 }
             })
         else:
@@ -119,6 +119,51 @@ def iniciar_sesion(db, datos_json):
             })
     except Exception as e:
         print(f"Error en consulta de login: {e}")
+        return json.dumps({
+            "estado": "error",
+            "mensaje": "error interno del servidor"
+        })
+
+def modificar_rol(db, datos_json):
+    print("Modificando rol...")
+    query1 = """SELECT rol FROM usuarios WHERE id = %s;"""
+    query2 = """
+        UPDATE usuarios
+        SET rol = %s
+        WHERE id = %s;
+    """
+    try:
+        db.execute(query1, (datos_json["modificador_id"],))
+        modificador = db.fetchone()
+        if not modificador: # Usuario modificador no existe
+            print("Modificacion error: usuario modificador no encontrado")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "Usuario modificador no encontrado"
+            })
+        rol_modificador = modificador[0]
+        if rol_modificador != "admin":  
+            print("Modificacion rechazada: usuario no es admin")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "Usuario no es admin"
+            })
+        db.execute(query2, (datos_json["nuevo_rol"], datos_json["modificar_id"]))
+        if db.rowcount == 0:
+            print("Modificacion error: Usuario a modificar no existe")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "Usuario a modificar no existe"
+            })
+        db.connection.commit() 
+        print("Modificacion de rol con exito")
+        return json.dumps({
+            "estado": "ok",
+            "mensaje": "rol modificado"
+        })
+    except Exception as e:
+        db.connection.rollback()    #   En caso de que la transacción falle, eliminar datos erroneos de base de datos
+        print(f"Error al modificar rol: {e}") 
         return json.dumps({
             "estado": "error",
             "mensaje": "error interno del servidor"

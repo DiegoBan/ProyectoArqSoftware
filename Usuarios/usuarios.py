@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, crear_usuario, iniciar_sesion
+from functions import dbconnect, crear_usuario, iniciar_sesion, modificar_rol
 import json
 
 sock = connect_to_bus()
@@ -34,10 +34,14 @@ try:
         print(f"Realizando acción: '{accion}'")
         match accion:
             case "crear_usuario":
-                crear_usuario(db, datos_json)
+                datos_json = crear_usuario(db, datos_json)
+                send_message(sock, "clien", datos_json)
             case "iniciar_sesion":
                 datos_json = iniciar_sesion(db, datos_json)
                 send_message(sock, "clien", datos_json) #   "clien" es cliente, debe cambiar según como se programe el front
+            case "modificar_rol":
+                datos_json = modificar_rol(db, datos_json)
+                send_message(sock, "clien", datos_json)
 
 except Exception as e:
     print(f"Error en el servicio: {e}")
