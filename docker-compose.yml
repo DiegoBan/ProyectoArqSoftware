@@ -35,3 +35,20 @@ services:
     depends_on:
       - bus
       - db
+      
+  cliente:
+    image: python:3.10-slim
+    container_name: servicio_cliente
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB:HOST=db
+      - DB_USER=admin
+      - DB_PASS=colocolo
+      - DB_NAME=db
+    volumes: 
+      - ./Clientes:/app
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python clientes.py"
+    depends_on:
+      - bus
+      - db

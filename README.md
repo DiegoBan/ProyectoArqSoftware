@@ -140,3 +140,60 @@ El cliente recibirá un json según el resultado de la operación:
   "mensaje": "rol modificado"
 }
 ```
+---
+### Servicio Cliente
+
+El servicio Cliente es el encargado de gestionar la información de las entidades a las que se les factura o se les registra una venta. Al igual que los demás servicios, recibe peticiones desde el bus SOA, valida permisos críticos (como verificar si el usuario es administrador) y formatea los registros de la base de datos para entregarlos limpios al FrontEnd.
+
+### Tareas del Servicio
+#### 1. Obtener clientes (obtener_clientes)
+
+Cuando una vista del FrontEnd requiere listar el directorio de clientes, el servicio realiza una consulta a la base de datos y transforma los registros crudos en una lista de diccionarios, facilitando su consumo y renderizado.
+
+Respuesta JSON enviada hacia el Cliente (Ejemplo exitoso):
+JSON
+```json
+{
+  "estado": "ok",
+  "mensaje": "Clientes obtenidos",
+  "clientes": [
+    {
+      "id": 1,
+      "nombre": "Blanco y Negro S.A.",
+      "rut_empresa": "99.999.999-9"
+    },
+    {
+      "id": 2,
+      "nombre": "Inmobiliaria Monumental",
+      "rut_empresa": "88.888.888-8"
+    }
+  ]
+}
+```
+#### 2. Actualizar cliente (actualizar_cliente)
+
+Este método se encarga de modificar los datos de un cliente existente. Cuenta con una validación de seguridad estricta: antes de ejecutar el UPDATE, verifica en la tabla de usuarios que quien solicita la acción posea el rol de admin.
+
+JSON esperado desde el Cliente:
+JSON
+```json
+{
+  "accion": "actualizar_cliente",
+  "user": "12.345.678-9",
+  "id": 1,
+  "nombre": "Nuevo Nombre Cliente",
+  "rut_empresa": "77.777.777-7"
+}
+```
+Respuesta JSON enviada hacia el Cliente (Ejemplo exitoso):
+JSON
+``` json
+{
+  "estado": "ok",
+  "mensaje": "Actualización exitosa",
+  "detalles": {
+    "nombre": "Nuevo Nombre Cliente",
+    "rut_empresa": "77.777.777-7"
+  }
+}
+```

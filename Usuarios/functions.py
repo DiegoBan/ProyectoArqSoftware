@@ -38,7 +38,7 @@ def crear_usuario(db, datos_json):
         db.execute(verify)
         admins = db.fetchall()
         admins = [fila[0] for fila in admins]
-        if datos_json["user"] not in admins: # Los usuarios que se tienen que verificar se tiene que arreglar mas adelante
+        if datos_json["user"] not in admins: 
             return json.dumps({
                 "estado": "error",
                 "tipo": "Usuario no verificado",
