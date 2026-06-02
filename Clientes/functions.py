@@ -102,3 +102,53 @@ def actualizar_cliente(db, datos_json):
             "estado": "error",
             "mensaje": "error interno del servidor"
         })
+        
+def registrar_cliente(db, datos_json):
+    print("<--- Realizando registro --->")
+    print("Cliente a registrar:", datos_json)
+    
+    query = """
+        INSERT INTO cliente (nombre, rut_empresa)
+        VALUES (%s, %s);
+    """
+    verify = """
+        SELECT rut FROM usuarios 
+        WHERE rol = 'admin';
+    """
+    
+    try:
+        db.execute(verify)
+        admins = db.fetchall()
+        admins = [fila[0] for fila in admins]
+        if datos_json["user"] not in admins: # Los usuarios que se tienen que verificar se tiene que arreglar mas adelante
+            return json.dumps({
+                "estado": "error",
+                "tipo": "Usuario no verificado",
+                "mensaje": "No se pudo registrar el cliente porque el usuario no es administrador.",
+                "detalles": {
+                    "User": "El usuario no es administrador"
+                }
+            })
+        else:
+            nombre = datos_json.get("nombre")
+            rut_empresa = datos_json.get("rut_empresa")
+            
+            db.execute(query, (nombre, rut_empresa))
+            db.connection.commit()
+            print('Query enviada a base de datos, esperando respuesta...')
+            
+            return json.dumps({
+                "estado": "ok",
+                "mensaje": "Registro exitoso",
+                "detalles": {
+                    "nombre": nombre,
+                    "rut_empresa": rut_empresa
+                }
+            })
+    except Exception as e:
+        print(f"Error en el registro del cliente: {e}")
+        return json.dumps({
+            "estado": "error",
+            "mensaje": "error interno del servidor"
+        })
+    

@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, obtener_clientes, actualizar_cliente
+from functions import dbconnect, obtener_clientes, actualizar_cliente, registrar_cliente
 import json
 
 sock = connect_to_bus()
@@ -38,6 +38,9 @@ try:
                 send_message(sock, "clien", datos_json)
             case "actualizar_cliente":
                 datos_json = actualizar_cliente(db, datos_json)
+                send_message(sock, "clien", datos_json)
+            case "regitrar_cliente":
+                datos_json = registrar_cliente(db, datos_json)
                 send_message(sock, "clien", datos_json)
 
 except Exception as e:
