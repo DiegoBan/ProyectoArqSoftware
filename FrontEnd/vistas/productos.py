@@ -17,6 +17,7 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
 
     productos_pendientes_list = []
 
+    # Lista dinámica simple
     lista_pendientes_view = ft.Column(
         controls=[ft.Text("No hay productos pendientes de aprobación.", color=ft.Colors.GREY_500)],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -31,7 +32,13 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
                     leading=ft.Icon(name="hourglass_empty", color=ft.Colors.ORANGE_400),
                     title=ft.Text(p["nombre"], weight=ft.FontWeight.BOLD),
                     subtitle=ft.Text(f"Precio: ${p['precio']} | {p['detalle']}"),
-                    trailing=ft.Chip(label=ft.Text("Pendiente"))
+                    # Reemplazamos ft.Chip por un contenedor básico para evitar fallos de versión
+                    trailing=ft.Container(
+                        content=ft.Text("Pendiente", size=12, color=ft.Colors.WHITE),
+                        bgcolor=ft.Colors.SURFACE_VARIANT,
+                        padding=5,
+                        border_radius=5
+                    )
                 ) for p in productos_pendientes_list
             ]
         page.update()
@@ -68,7 +75,7 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
     btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
 
-    # --- Vistas de Contenido ---
+    # --- Bloques de Contenido ---
     content_crear = ft.Column(
         controls=[
             ft.Text("Registrar Nuevo Producto", size=22, weight=ft.FontWeight.BOLD),
@@ -81,7 +88,8 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             btn_volver
         ],
         alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        visible=True
     )
 
     content_pendientes = ft.Column(
@@ -92,46 +100,58 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         ],
         alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        visible=False # Oculto por defecto
+        visible=False
     )
 
-    # --- Sistema de Navegación Alternativo (Ultra-Compatible) ---
-    def cambiar_pestana(e):
-        if e.control.text == "Crear Producto":
-            content_crear.visible = True
-            content_pendientes.visible = False
-            btn_tab1.bgcolor = ft.Colors.BLUE_GREY_800
-            btn_tab2.bgcolor = None
-        else:
-            content_crear.visible = False
-            content_pendientes.visible = True
-            btn_tab1.bgcolor = None
-            btn_tab2.bgcolor = ft.Colors.BLUE_GREY_800
+    # --- Pestañas Manuales usando Containers (Cero fallos de librería) ---
+    def click_tab_crear(e):
+        content_crear.visible = True
+        content_pendientes.visible = False
+        tab_crear.bgcolor = ft.Colors.BLUE_GREY_700
+        tab_pendientes.bgcolor = ft.Colors.BLACK26
         page.update()
 
-    btn_tab1 = ft.TextButton("Crear Producto", on_click=cambiar_pestana, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)), bgcolor=ft.Colors.BLUE_GREY_800)
-    btn_tab2 = ft.TextButton("Ver Pendientes", on_click=cambiar_pestana, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)))
+    def click_tab_pendientes(e):
+        content_crear.visible = False
+        content_pendientes.visible = True
+        tab_crear.bgcolor = ft.Colors.BLACK26
+        tab_pendientes.bgcolor = ft.Colors.BLUE_GREY_700
+        page.update()
 
-    menu_superior = ft.Row(
-        controls=[btn_tab1, btn_tab2],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=20
+    tab_crear = ft.Container(
+        content=ft.Text("Crear Producto", weight=ft.FontWeight.BOLD),
+        padding=12,
+        bgcolor=ft.Colors.BLUE_GREY_700,
+        border_radius=8,
+        on_click=click_tab_crear
     )
 
-    # --- Contenedor Principal ---
-    contenedor_vistas = ft.Column(
-        controls=[
-            menu_superior,
-            ft.Divider(height=20, color=ft.Colors.GREY_700),
-            content_crear,
-            content_pendientes
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+    tab_pendientes = ft.Container(
+        content=ft.Text("Ver Pendientes", weight=ft.FontWeight.BOLD),
+        padding=12,
+        bgcolor=ft.Colors.BLACK26,
+        border_radius=8,
+        on_click=click_tab_pendientes
     )
 
+    menu_pestanas = ft.Row(
+        controls=[tab_crear, tab_pendientes],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=15
+    )
+
+    # --- Render ---
     return ft.Container(
-        content=contenedor_vistas,
+        content=ft.Column(
+            controls=[
+                menu_pestanas,
+                ft.Divider(height=20, color=ft.Colors.GREY_800),
+                content_crear,
+                content_pendientes
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        ),
         alignment=ft.Alignment.CENTER,
         expand=True,
         padding=20
