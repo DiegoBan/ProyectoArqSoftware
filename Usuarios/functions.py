@@ -86,7 +86,7 @@ def crear_usuario(db, datos_json):
 def iniciar_sesion(db, datos_json):
     print("Intento de login...")
     query = """
-        SELECT id, password_hash, nombre, rol
+        SELECT id, rut, password_hash, nombre, rol
         FROM usuarios
         WHERE email = %s;
     """
@@ -99,7 +99,7 @@ def iniciar_sesion(db, datos_json):
                 "estado": "error",
                 "mensaje": "Usuario no encontrado"
             })
-        id_user, hash_user, nombre_user, rol_user = usuario
+        id_user, rut_user, hash_user, nombre_user, rol_user = usuario
         if hash_user == datos_json["password_hash"]:
             print(f"Login exitoso para usuario ID: {id_user}")
             return json.dumps({
@@ -107,6 +107,7 @@ def iniciar_sesion(db, datos_json):
                 "mensaje": "autenticación exitosa",
                 "usuario": {
                     "id": id_user,
+                    "rut": rut_user,
                     "nombre": nombre_user,
                     "rol": rol_user
                 }
