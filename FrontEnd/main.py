@@ -1,5 +1,4 @@
 import flet as ft
-import threading
 import json
 from soa_lib import connect_to_bus, send_message, receive_message
 
