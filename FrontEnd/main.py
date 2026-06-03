@@ -36,7 +36,7 @@ def main(page: ft.Page):
             
         page.update()
 
-    # 3. Hilo de Escucha (Background Worker)
+    # 3. Hilo de Escucha 
     def escuchar_bus():
         while True:
             try:
@@ -54,29 +54,47 @@ def main(page: ft.Page):
                     # Ignoramos mensajes puros del bus que no son JSON
                     continue 
                 
-                # ---> AQUÍ VA TU BLOQUE DE CÓDIGO <---
                 if respuesta.get("estado") == "ok":
-                    # Extraer el bloque del usuario
-                    usuario = respuesta.get("usuario", {})
+                    if "usuario" in respuesta:
+                        # --- 1. ES UNA RESPUESTA DE INICIO DE SESIÓN ---
+                        usuario = respuesta.get("usuario", {})
+                        page.session.store.set("rol", str(usuario.get("rol"))) 
+                        page.session.store.set("nombre", usuario.get("nombre"))
+                        page.session.store.set("rut", usuario.get("rut"))
+                        
+                        page.snack_bar = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
+                        page.snack_bar.open = True
+                        cambiar_vista("dashboard")
                     
-                    # GUARDAR DATOS EN MEMORIA DE LA APP
-                    page.session.store.set("rol", str(usuario.get("rol"))) 
-                    page.session.store.set("nombre", usuario.get("nombre"))
-                    
-                    page.snack_bar = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
-                    page.snack_bar.open = True
-                    
-                    # Cambiamos automáticamente al menú principal
-                    cambiar_vista("dashboard")
+                    else:
+                        # --- 2. ES OTRA OPERACIÓN (Ej: Crear Usuario) ---
+                        mensaje_exito = respuesta.get("mensaje", "Operación realizada con éxito")
+                        page.snack_bar = ft.SnackBar(ft.Text(mensaje_exito), bgcolor=ft.Colors.GREEN_700)
+                        page.snack_bar.open = True
+                        
+                        # Desbloqueamos la pantalla para seguir trabajando
+                        if len(page.controls) > 0:
+                            page.controls[0].disabled = False
+                
                 else:
-                    # Si falla la clave, mostramos el error y rehabilitamos el botón
-                    page.snack_bar = ft.SnackBar(ft.Text(respuesta.get("mensaje", "Error")), bgcolor=ft.Colors.RED_700)
+                    # --- 3. MANEJO DE ERRORES GENERAL EN PANTALLA ---
+                    error_msg = respuesta.get("mensaje", "Error en la operación")
+                    
+                    # Extraemos detalles extra si el backend los manda (como en tu log)
+                    if "detalles" in respuesta:
+                        valores_detalles = list(respuesta.get("detalles").values())
+                        if valores_detalles:
+                            error_msg += f" ({valores_detalles[0]})"
+                            
+                    # Mostramos el error en la barra inferior
+                    page.snack_bar = ft.SnackBar(ft.Text(error_msg), bgcolor=ft.Colors.RED_700)
                     page.snack_bar.open = True
-                    # Volvemos a dibujar la vista actual (login) para reactivar el botón
-                    cambiar_vista("login") 
+                    
+                    # Desbloqueamos la pantalla sin cambiar de vista
+                    if len(page.controls) > 0:
+                        page.controls[0].disabled = False 
                 
                 page.update()
-                # ---> FIN DE TU BLOQUE <---
                 
             except Exception as ex:
                 print(f"Error procesando mensaje entrante: {ex}")

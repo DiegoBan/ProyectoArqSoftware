@@ -38,10 +38,13 @@ def vista_crear_usuario(page: ft.Page, sock, cambiar_vista_func):
         
         password_bytes = txt_password.value.encode('utf-8')
         password_hash = hashlib.sha256(password_bytes).hexdigest()
+
+        rut_admin_actual = page.session.store.get("rut") 
+
         # Construir el JSON
         payload = {
             "accion": "crear_usuario",
-            "user": "admin", # Agregado para pasar la verificación de tu functions.py
+            "user": rut_admin_actual, 
             "rut": txt_rut.value,
             "email": txt_email.value,
             "password_hash": password_hash,
@@ -67,7 +70,7 @@ def vista_crear_usuario(page: ft.Page, sock, cambiar_vista_func):
 
     # --- Botones ---
     btn_guardar = ft.Button("Crear Usuario", on_click=btn_crear_click, width=350, height=45)
-    btn_volver = ft.TextButton("Volver al Login", on_click=lambda _: cambiar_vista_func("login"))
+    btn_volver = ft.TextButton("Volver al Inicio", on_click=lambda _: cambiar_vista_func("dashboard"))
 
     # --- Estructura Visual ---
     formulario = ft.Column(
