@@ -209,3 +209,58 @@ Esta función permite agregar un nuevo cliente a la base de datos del sistema. A
   "nombre": "Nuevo Cliente S.P.A",
   "rut_empresa": "66.666.666-6"
 }
+```
+---
+### Servicio Productos
+
+El servicio **Productos** es el encargado de gestionar el catálogo o inventario de la empresa. Permite la consulta y el registro de nuevos artículos que posteriormente serán utilizados en ventas o facturaciones. Al igual que los demás servicios transaccionales, cuenta con validación de roles para proteger la creación de registros.
+
+### Tareas del Servicio
+
+#### 1. Obtener productos (`obtener_productos`)
+
+Este método se encarga de consultar la base de datos para extraer todo el catálogo de productos disponibles. Transforma los datos recibidos en una lista de diccionarios con el nombre de cada columna, facilitando su lectura para el FrontEnd.
+
+**Respuesta JSON enviada hacia el Cliente (Ejemplo exitoso):**
+```json
+{
+  "estado": "ok",
+  "mensaje": "Productos obtenidos",
+  "productos": [
+    {
+      "id": 1,
+      "nombre": "Tubo de Cobre 1/2",
+      "familia": "Gasfitería",
+      "subfamilia": "Cañerías",
+      "descripcion": "Tubo de cobre tipo L para instalación de agua",
+      "PN": "TC-001-L",
+      "serie": "N/A"
+    },
+    {
+      "id": 2,
+      "nombre": "Notebook ThinkPad",
+      "familia": "Electrónica",
+      "subfamilia": "Computación",
+      "descripcion": "Notebook para uso de oficina",
+      "PN": "TP-T14-Gen3",
+      "serie": "PF12345X"
+    }
+  ]
+}
+```
+#### 2. Crear producto (`crear_producto`)
+
+Esta función permite registrar un nuevo producto en el inventario. Implementa una validación de seguridad estricta para asegurar que únicamente los usuarios administradores (verificados mediante su RUT en el campo `user`) puedan añadir artículos nuevos al catálogo.
+
+**JSON esperado desde el Cliente:**
+```json
+{
+  "accion": "crear_producto",
+  "user": "12.345.678-9",
+  "nombre": "Tubo de PVC 110mm",
+  "familia": "Construcción",
+  "subfamilia": "Desagüe",
+  "descripcion": "Tubo de PVC sanitario de 6 metros",
+  "PN": "PVC-110-S",
+  "serie": "Lote-2023X"
+}
