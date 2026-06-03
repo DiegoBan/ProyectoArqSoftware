@@ -7,6 +7,9 @@ from soa_lib import connect_to_bus, send_message, receive_message
 from vistas.crearuser import vista_crear_usuario
 from vistas.login import vista_login
 from vistas.home import vista_dashboard
+from vistas.productos import vista_productos
+from vistas.ventas import vista_ventas
+
 
 def main(page: ft.Page):
     page.title = "Frontend SOA ERP"
@@ -33,6 +36,11 @@ def main(page: ft.Page):
             page.add(vista_crear_usuario(page, sock, cambiar_vista))
         elif nombre_vista == "dashboard":
             page.add(vista_dashboard(page, sock, cambiar_vista))
+        elif nombre_vista == "productos":
+            page.add(vista_productos(page, sock, cambiar_vista))
+        elif nombre_vista == "ventas":
+            page.add(vista_ventas(page, sock, cambiar_vista))
+        
             
         page.update()
 
