@@ -3,7 +3,7 @@ import threading
 import json
 from soa_lib import connect_to_bus, send_message, receive_message
 
-# Importamos las vistas
+# Importar las vistas
 from vistas.crearuser import vista_crear_usuario
 from vistas.login import vista_login
 from vistas.home import vista_dashboard
@@ -97,11 +97,21 @@ def main(page: ft.Page):
                 page.update()
                 
             except Exception as ex:
+                # 1. Mostrar en la terminal
                 print(f"Error procesando mensaje entrante: {ex}")
+                
+                # 2. Mostrar en la pantalla del usuario 
+                page.snack_bar = ft.SnackBar(ft.Text(f"Error crítico en el cliente: {ex}"), bgcolor=ft.Colors.RED_900)
+                page.snack_bar.open = True
+                
+                # 3. Desbloquear la pantalla por si se había quedado "pensando"
+                if len(page.controls) > 0:
+                    page.controls[0].disabled = False
+                page.update()
+                
 
     # Iniciar el hilo escuchador
-    hilo = threading.Thread(target=escuchar_bus, daemon=True)
-    hilo.start()
+    page.run_thread(escuchar_bus)
 
     # Arrancar la aplicación en la vista por defecto (Login)
     cambiar_vista("login")
