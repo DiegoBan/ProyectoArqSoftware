@@ -60,8 +60,8 @@ def main(page: ft.Page):
                     usuario = respuesta.get("usuario", {})
                     
                     # GUARDAR DATOS EN MEMORIA DE LA APP
-                    page.session.set("rol", str(usuario.get("rol"))) 
-                    page.session.set("nombre", usuario.get("nombre"))
+                    page.session.store.set("rol", str(usuario.get("rol"))) 
+                    page.session.store.set("nombre", usuario.get("nombre"))
                     
                     page.snack_bar = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
                     page.snack_bar.open = True

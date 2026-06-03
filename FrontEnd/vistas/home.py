@@ -3,8 +3,8 @@ import flet as ft
 def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
     
     # 1. Rescatamos los datos de la memoria temporal (sesión)
-    rol_usuario = page.session.get("rol")
-    nombre_usuario = page.session.get("nombre")
+    rol_usuario = page.session.store.get("rol")
+    nombre_usuario = page.session.store.get("nombre")
 
     # 2. Construimos la base del menú
     controles_menu = [
@@ -18,7 +18,7 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
         # Este botón SOLO se agrega a la pantalla si el rol es exactamente 'admin'
         btn_crear_user = ft.Button(
             "Administración: Crear Nuevo Usuario", 
-            icon=ft.icons.PERSON_ADD,
+            icon="person_add",
             on_click=lambda _: cambiar_vista_func("crear_usuario"),
             width=350, height=45
         )
@@ -29,7 +29,7 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
 
     # 4. Botón de Cerrar Sesión (Visible para todos)
     def btn_cerrar_sesion_click(e):
-        page.session.clear() # Borramos los datos de seguridad por precaución
+        page.session.store.clear() # Borramos los datos de seguridad por precaución
         cambiar_vista_func("login")
 
     btn_salir = ft.TextButton("Cerrar Sesión", on_click=btn_cerrar_sesion_click)
