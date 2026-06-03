@@ -4,11 +4,10 @@ from soa_lib import send_message
 
 def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     
-    # --- [Pestaña 1] Campos del Formulario de Creación ---
+    # --- [Formulario] Campos de Creación ---
     txt_nombre = ft.TextField(label="Nombre del Producto", width=350)
     txt_detalle = ft.TextField(label="Detalle / Descripción", width=350, multiline=True, min_lines=2, max_lines=4)
     
-    # Input numérico estricto
     txt_precio = ft.TextField(
         label="Precio", 
         width=350, 
@@ -16,10 +15,8 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    # Lista local simulada para mostrar en la pestaña de "Pendientes"
     productos_pendientes_list = []
 
-    # Contenedor visual dinámico para la lista de pendientes
     lista_pendientes_view = ft.Column(
         controls=[ft.Text("No hay productos pendientes de aprobación.", color=ft.Colors.GREY_500)],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -60,7 +57,6 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         productos_pendientes_list.append(payload)
         actualizar_lista_pendientes()
 
-        # Limpiar formulario
         txt_nombre.value = ""
         txt_detalle.value = ""
         txt_precio.value = ""
@@ -72,7 +68,7 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
     btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
 
-    # --- Contenido de las Pestañas ---
+    # --- Vistas de Contenido ---
     content_crear = ft.Column(
         controls=[
             ft.Text("Registrar Nuevo Producto", size=22, weight=ft.FontWeight.BOLD),
@@ -95,23 +91,48 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             lista_pendientes_view
         ],
         alignment=ft.MainAxisAlignment.START,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        visible=False # Oculto por defecto
+    )
+
+    # --- Sistema de Navegación Alternativo (Ultra-Compatible) ---
+    def cambiar_pestana(e):
+        if e.control.text == "Crear Producto":
+            content_crear.visible = True
+            content_pendientes.visible = False
+            btn_tab1.bgcolor = ft.Colors.BLUE_GREY_800
+            btn_tab2.bgcolor = None
+        else:
+            content_crear.visible = False
+            content_pendientes.visible = True
+            btn_tab1.bgcolor = None
+            btn_tab2.bgcolor = ft.Colors.BLUE_GREY_800
+        page.update()
+
+    btn_tab1 = ft.TextButton("Crear Producto", on_click=cambiar_pestana, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)), bgcolor=ft.Colors.BLUE_GREY_800)
+    btn_tab2 = ft.TextButton("Ver Pendientes", on_click=cambiar_pestana, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)))
+
+    menu_superior = ft.Row(
+        controls=[btn_tab1, btn_tab2],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=20
+    )
+
+    # --- Contenedor Principal ---
+    contenedor_vistas = ft.Column(
+        controls=[
+            menu_superior,
+            ft.Divider(height=20, color=ft.Colors.GREY_700),
+            content_crear,
+            content_pendientes
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER
     )
 
-    # --- Configuración del Tab usando strings para iconos ---
-    tabs = ft.Tabs(
-        selected_index=0,
-        animation_duration=300,
-        tabs=[
-            ft.Tab(text="Crear Producto", icon="add_box", content=ft.Container(content=content_crear, padding=20)),
-            ft.Tab(text="Pendientes", icon="pending_actions", content=ft.Container(content=content_pendientes, padding=20)),
-        ],
-        expand=1
-    )
-
     return ft.Container(
-        content=tabs,
+        content=contenedor_vistas,
         alignment=ft.Alignment.CENTER,
         expand=True,
-        padding=10
+        padding=20
     )
