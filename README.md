@@ -25,7 +25,7 @@ usar el comando
 ```
 pip install -r requirements.txt
 ```
-Luego para iniciar el front se debe ejecutar en la carpeta "FrontEnd" el siguiente comando.
+Luego para iniciar el front se debe ejecutar primero el dockerfile del backend, el cual se encuentra en la carpeta raiz del proyecto. Luego ir a la carpeta "FrontEnd" y copiar el siguiente comando.
 ```
 python main.py
 ```
