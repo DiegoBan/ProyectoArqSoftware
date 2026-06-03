@@ -17,7 +17,6 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     )
 
     # Lista local simulada para mostrar en la pestaña de "Pendientes"
-    # Nota: En una fase avanzada, esta lista se alimentaría del backend mediante el bus.
     productos_pendientes_list = []
 
     # Contenedor visual dinámico para la lista de pendientes
@@ -32,10 +31,10 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         else:
             lista_pendientes_view.controls = [
                 ft.ListTile(
-                    leading=ft.Icon(ft.icons.HOURGLASS_EMPTY, color=ft.Colors.ORANGE_400),
+                    leading=ft.Icon(name="hourglass_empty", color=ft.Colors.ORANGE_400),
                     title=ft.Text(p["nombre"], weight=ft.FontWeight.BOLD),
                     subtitle=ft.Text(f"Precio: ${p['precio']} | {p['detalle']}"),
-                    trailing=ft.Chip(label="Pendiente", bgcolor=ft.Colors.SURFACE_VARIANT)
+                    trailing=ft.Chip(label=ft.Text("Pendiente"))
                 ) for p in productos_pendientes_list
             ]
         page.update()
@@ -56,10 +55,8 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             "estado": "pendiente"
         }
         
-        # Enviar al servicio de productos ("produ") a través del Bus
         send_message(sock, "produ", json.dumps(payload))
         
-        # Añadir a la pestaña local de pendientes para feedback inmediato
         productos_pendientes_list.append(payload)
         actualizar_lista_pendientes()
 
@@ -101,13 +98,13 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         horizontal_alignment=ft.CrossAxisAlignment.CENTER
     )
 
-    # --- Configuración del Tab ---
+    # --- Configuración del Tab usando strings para iconos ---
     tabs = ft.Tabs(
         selected_index=0,
         animation_duration=300,
         tabs=[
-            ft.Tab(text="Crear Producto", icon=ft.icons.ADD_BOX, content=ft.Container(content=content_crear, padding=20)),
-            ft.Tab(text="Pendientes", icon=ft.icons.PENDING_ACTIONS, content=ft.Container(content=content_pendientes, padding=20)),
+            ft.Tab(text="Crear Producto", icon="add_box", content=ft.Container(content=content_crear, padding=20)),
+            ft.Tab(text="Pendientes", icon="pending_actions", content=ft.Container(content=content_pendientes, padding=20)),
         ],
         expand=1
     )
