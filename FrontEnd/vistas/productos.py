@@ -34,7 +34,7 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             "estado": "pendiente"
         }
         
-        send_message(sock, "produ", json.dumps(payload))
+        send_message(sock, "front", json.dumps(payload))
         
         # Cerrar y limpiar de forma segura
         dialogo_confirmacion.open = False

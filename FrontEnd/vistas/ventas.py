@@ -66,13 +66,13 @@ def vista_ventas(page: ft.Page, sock, cambiar_vista_func):
             txt_precio_final.value = str(precio_sugerido)
 
         if stock_actual == 0:
-            lbl_status_stock.value = "❌ SIN STOCK DISPONIBLE"
+            lbl_status_stock.value = "SIN STOCK DISPONIBLE"
             lbl_status_stock.color = "red_400"
         elif cant_solicitada > stock_actual:
-            lbl_status_stock.value = f"⚠️ Stock insuficiente (Solo quedan {stock_actual} un.)"
+            lbl_status_stock.value = f"Stock insuficiente (Solo quedan {stock_actual} un.)"
             lbl_status_stock.color = "orange_400"
         else:
-            lbl_status_stock.value = f"✅ Stock disponible ({stock_actual} un. en bodega)"
+            lbl_status_stock.value = f"Stock disponible ({stock_actual} un. en bodega)"
             lbl_status_stock.color = "green_400"
         
         page.update()

@@ -11,7 +11,7 @@ from vistas.ventas import vista_ventas
 
 
 def main(page: ft.Page):
-    page.title = "Frontend SOA ERP"
+    page.title = "Frontend - Proyecto Arquitectura de Software"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK
@@ -19,8 +19,8 @@ def main(page: ft.Page):
     # 1. Conexión al Bus
     try:
         sock = connect_to_bus()
-        send_message(sock, "sinit", "clien")
-        print("Frontend conectado al bus como 'clien'")
+        send_message(sock, "sinit", "front")  # Nos registramos como "front" en el bus
+        print("Frontend conectado al bus como 'front'")
     except Exception as e:
         page.add(ft.Text(f"Error crítico conectando al bus: {e}", color=ft.Colors.RED))
         return

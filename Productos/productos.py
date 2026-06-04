@@ -6,8 +6,8 @@ sock = connect_to_bus()
 
 try:
     # Registro inicial (sinit)
-    print("Registrando servicio 'clien'...")
-    send_message(sock, "sinit", "clien")    #   Nombre de servicio en bus usuar
+    print("Registrando servicio 'produ'...")
+    send_message(sock, "sinit", "produ")    #   Nombre de servicio en bus usuar
     
     # Procesar respuesta del sinit
     init_data = receive_message(sock)
@@ -35,10 +35,10 @@ try:
         match accion:
             case "obtener_productos":
                 datos_json = obtener_productos(db)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
             case "crear_producto":
                 datos_json = crear_producto(db, datos_json)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
 
 except Exception as e:
     print(f"Error en el servicio: {e}")

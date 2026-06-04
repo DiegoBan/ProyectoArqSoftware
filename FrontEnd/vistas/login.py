@@ -41,7 +41,7 @@ def vista_login(page: ft.Page, sock):
     # --- Estructura Visual ---
     formulario = ft.Column(
         controls=[
-            ft.Text("Acceso Restringido ERP", size=30, weight=ft.FontWeight.BOLD),
+            ft.Text("Iniciar Sesión", size=30, weight=ft.FontWeight.BOLD),
             ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
             txt_email,
             txt_password,

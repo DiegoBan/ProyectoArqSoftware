@@ -35,13 +35,13 @@ try:
         match accion:
             case "crear_usuario":
                 datos_json = crear_usuario(db, datos_json)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
             case "iniciar_sesion":
                 datos_json = iniciar_sesion(db, datos_json)
-                send_message(sock, "clien", datos_json) #   "clien" es cliente, debe cambiar según como se programe el front
+                send_message(sock, "front", datos_json) #   "front" es frontend, debe cambiar según como se programe el front
             case "modificar_rol":
                 datos_json = modificar_rol(db, datos_json)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
 
 except Exception as e:
     print(f"Error en el servicio: {e}")
