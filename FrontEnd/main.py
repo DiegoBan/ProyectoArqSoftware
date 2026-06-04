@@ -8,6 +8,7 @@ from vistas.login import vista_login
 from vistas.home import vista_dashboard
 from vistas.productos import vista_productos
 from vistas.ventas import vista_ventas
+from vistas.confirmar_producto import vista_confirmar_producto
 
 
 def main(page: ft.Page):
@@ -39,7 +40,8 @@ def main(page: ft.Page):
             page.add(vista_productos(page, sock, cambiar_vista))
         elif nombre_vista == "ventas":
             page.add(vista_ventas(page, sock, cambiar_vista))
-        
+        elif nombre_vista == "confirmar_producto":
+            page.add(vista_confirmar_producto(page, sock, cambiar_vista))
             
         page.update()
 
