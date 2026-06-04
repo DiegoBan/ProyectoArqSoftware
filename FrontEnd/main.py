@@ -7,9 +7,10 @@ from vistas.crearuser import vista_crear_usuario
 from vistas.login import vista_login
 from vistas.home import vista_dashboard
 from vistas.productos import vista_productos
-from vistas.ventas import vista_ventas
 from vistas.confirmar_producto import vista_confirmar_producto
-
+from vistas.ventas import vista_dashboard_ventas
+from vistas.nueva_cotizacion import vista_nueva_cotizacion
+from vistas.historial_ventas import vista_estado_cotizaciones
 
 def main(page: ft.Page):
     page.title = "Frontend - Proyecto Arquitectura de Software"
@@ -42,8 +43,14 @@ def main(page: ft.Page):
             page.add(vista_ventas(page, sock, cambiar_vista))
         elif nombre_vista == "confirmar_producto":
             page.add(vista_confirmar_producto(page, sock, cambiar_vista))
-            
-        page.update()
+        elif nombre_vista == "ventas":
+            page.add(vista_dashboard_ventas(page, sock, cambiar_vista))
+        elif nombre_vista == "nueva_cotizacion":
+            page.add(vista_nueva_cotizacion(page, sock, cambiar_vista))
+        elif nombre_vista == "estado_cotizaciones":
+            page.add(vista_estado_cotizaciones(page, sock, cambiar_vista))
+
+                page.update()
 
     # 3. Hilo de Escucha 
     def escuchar_bus():

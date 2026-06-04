@@ -1,150 +1,55 @@
 import flet as ft
-import json
-from datetime import datetime
-from soa_lib import send_message
 
-def vista_ventas(page: ft.Page, sock, cambiar_vista_func):
+def vista_dashboard_ventas(page: ft.Page, sock, cambiar_vista_func):
     
-    PRODUCTOS_STOCK = {
-        "Laptop HP": {"stock": 12, "precio_base": 750000},
-        "Monitor Samsung 24\"": {"stock": 5, "precio_base": 130000},
-        "Teclado Mecánico": {"stock": 0, "precio_base": 45000},
-        "Mouse Ergonómico": {"stock": 25, "precio_base": 25000}
-    }
-    
-    CLIENTES_REGISTRADOS = [
-        "Inversiones Alfa S.A.",
-        "Juan Pérez Distribuidora",
-        "Clínica Santa María",
-        "Particular - María Pinto"
-    ]
-
-    dropdown_cliente = ft.Dropdown(
-        label="Seleccionar Cliente",
-        width=350,
-        options=[ft.dropdown.Option(cliente) for cliente in CLIENTES_REGISTRADOS]
-    )
-
-    dropdown_producto = ft.Dropdown(
-        label="Seleccionar Producto",
-        width=350,
-        options=[ft.dropdown.Option(prod) for prod in PRODUCTOS_STOCK.keys()]
-    )
-
-    txt_cantidad = ft.TextField(
-        label="Cantidad", 
-        width=150, 
-        value="1",
-        keyboard_type=ft.KeyboardType.NUMBER,
-        input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
-    )
-
-    txt_precio_final = ft.TextField(
-        label="Precio Unitario Final ($)", 
-        width=180,
-        keyboard_type=ft.KeyboardType.NUMBER,
-        input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
-    )
-
-    lbl_status_stock = ft.Text("", size=14, weight=ft.FontWeight.W_500)
-    
-    fecha_hoy = datetime.now().strftime("%Y-%m-%d")
-    txt_fecha = ft.TextField(label="Fecha de Emisión", value=fecha_hoy, width=350, disabled=True)
-
-    def verificar_disponibilidad(e):
-        prod_seleccionado = dropdown_producto.value
-        cant_solicitada = txt_cantidad.value
-
-        if not prod_seleccionado or not cant_solicitada:
-            return
-
-        cant_solicitada = int(cant_solicitada)
-        stock_actual = PRODUCTOS_STOCK[prod_seleccionado]["stock"]
-        precio_sugerido = PRODUCTOS_STOCK[prod_seleccionado]["precio_base"]
-
-        if not txt_precio_final.value or e.control == dropdown_producto:
-            txt_precio_final.value = str(precio_sugerido)
-
-        if stock_actual == 0:
-            lbl_status_stock.value = "SIN STOCK DISPONIBLE"
-            lbl_status_stock.color = "red_400"
-        elif cant_solicitada > stock_actual:
-            lbl_status_stock.value = f"Stock insuficiente (Solo quedan {stock_actual} un.)"
-            lbl_status_stock.color = "orange_400"
-        else:
-            lbl_status_stock.value = f"Stock disponible ({stock_actual} un. en bodega)"
-            lbl_status_stock.color = "green_400"
+    # Redirecciones a las sub-vistas
+    def ir_a_nueva(e):
+        cambiar_vista_func("nueva_cotizacion")
         
-        page.update()
+    def ir_a_estados(e):
+        cambiar_vista_func("estado_cotizaciones")
 
-    dropdown_producto.on_change = verificar_disponibilidad
-    txt_cantidad.on_change = verificar_disponibilidad
-
-    def btn_crear_cotizacion_click(e):
-        if not dropdown_cliente.value or not dropdown_producto.value or not txt_precio_final.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Por favor, complete todos los parámetros"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
-            page.update()
-            return
-
-        prod = dropdown_producto.value
-        cant = int(txt_cantidad.value if txt_cantidad.value else 0)
-        
-        if cant > PRODUCTOS_STOCK[prod]["stock"]:
-            page.snack_bar = ft.SnackBar(ft.Text("No puedes procesar una venta sin stock suficiente"), bgcolor=ft.Colors.RED_700)
-            page.snack_bar.open = True
-            page.update()
-            return
-
-        payload = {
-            "accion": "crear_cotizacion",
-            "cliente": dropdown_cliente.value,
-            "producto": prod,
-            "cantidad": cant,
-            "precio_total": cant * int(txt_precio_final.value),
-            "fecha": txt_fecha.value
-        }
-
-        send_message(sock, "venta", json.dumps(payload))
-
-        page.snack_bar = ft.SnackBar(ft.Text("Cotización generada y enviada con éxito"), bgcolor=ft.Colors.GREEN_700)
-        page.snack_bar.open = True
-        
-        dropdown_cliente.value = None
-        dropdown_producto.value = None
-        txt_cantidad.value = "1"
-        txt_precio_final.value = ""
-        lbl_status_stock.value = ""
-        page.update()
-
-    btn_generar = ft.Button("Generar Cotización", on_click=btn_crear_cotizacion_click, width=350, height=45)
-    btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
-
-    recuadro_cotizacion = ft.Column(
-        controls=[
-            ft.Text("Nueva Cotización", size=26, weight=ft.FontWeight.BOLD),
-            ft.Text("Módulo de Ventas e Inventario", size=14, color=ft.Colors.GREY_400),
-            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            txt_fecha,
-            dropdown_cliente,
-            dropdown_producto,
-            ft.Row(
-                controls=[txt_cantidad, txt_precio_final],
-                alignment=ft.MainAxisAlignment.CENTER,
-                width=350
-            ),
-            lbl_status_stock,
-            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            btn_generar,
-            btn_volver
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+    # Tarjeta para crear
+    card_nueva = ft.Container(
+        content=ft.Column([
+            ft.Icon(name="add_shopping_cart", size=40, color=ft.Colors.BLUE_400),
+            ft.Text("Nueva Cotización", size=18, weight=ft.FontWeight.BOLD),
+            ft.Text("Generar un nuevo documento de venta", size=12, color=ft.Colors.GREY_400, text_align=ft.TextAlign.CENTER)
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=20,
+        bgcolor=ft.Colors.GREY_900,
+        border_radius=10,
+        width=200,
+        height=180,
+        on_click=ir_a_nueva
     )
+
+    # Tarjeta para ver estados
+    card_estados = ft.Container(
+        content=ft.Column([
+            ft.Icon(name="assignment", size=40, color=ft.Colors.ORANGE_400),
+            ft.Text("Estado Cotizaciones", size=18, weight=ft.FontWeight.BOLD),
+            ft.Text("Seguimiento, OCO y Facturación", size=12, color=ft.Colors.GREY_400, text_align=ft.TextAlign.CENTER)
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=20,
+        bgcolor=ft.Colors.GREY_900,
+        border_radius=10,
+        width=200,
+        height=180,
+        on_click=ir_a_estados
+    )
+
+    btn_volver = ft.TextButton("Volver al Dashboard Principal", on_click=lambda _: cambiar_vista_func("dashboard"))
 
     return ft.Container(
-        content=recuadro_cotizacion,
+        content=ft.Column([
+            ft.Text("Módulo de Ventas", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text("Seleccione la acción que desea realizar", size=14, color=ft.Colors.GREY_400),
+            ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
+            ft.Row([card_nueva, card_estados], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
+            ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
+            btn_volver
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
         alignment=ft.Alignment.CENTER,
-        expand=True,
-        padding=20
+        expand=True
     )
