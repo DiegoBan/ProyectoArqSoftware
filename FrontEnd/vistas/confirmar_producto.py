@@ -4,12 +4,12 @@ from soa_lib import send_message
 
 def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
     
-    # Recorrer los datos guardados provisionalmente en la sesión
-    nombre = page.session["temp_producto_nombre"]
-    detalle = page.session["temp_producto_detalle"]
-    precio = page.session["temp_producto_precio"]
+    # Recuperar strings desde la sesión con la API nativa
+    nombre = page.session.get_value("temp_producto_nombre")
+    detalle = page.session.get_value("temp_producto_detalle")
+    precio = page.session.get_value("temp_producto_precio")
 
-    # Acción al confirmar definitivamente
+    # Envío final al bus de servicios
     def btn_confirmar_click(e):
         payload = {
             "accion": "crear_producto",
@@ -19,26 +19,23 @@ def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
             "estado": "pendiente"
         }
         
-        # Enviar el JSON al bus mediante el socket
+        # Despachar mensaje por el socket
         send_message(sock, "produ", json.dumps(payload))
         
-        # Limpiar las variables temporales de la sesión por seguridad
-        page.session["temp_producto_nombre"] = None
-        page.session["temp_producto_detalle"] = None
-        page.session["temp_producto_precio"] = None
+        # Limpiar variables para liberar memoria
+        page.session.remove("temp_producto_nombre")
+        page.session.remove("temp_producto_detalle")
+        page.session.remove("temp_producto_precio")
         
-        # Feedback visual exitoso
         page.snack_bar = ft.SnackBar(ft.Text("Producto registrado con éxito"), bgcolor=ft.Colors.GREEN_700)
         page.snack_bar.open = True
         
-        # Volver al formulario inicial limpio
+        # Retornar al formulario de origen limpio
         cambiar_vista_func("productos")
 
-    # Botones de Acción de esta pantalla
     btn_confirmar = ft.ElevatedButton("Confirmar y Guardar", on_click=btn_confirmar_click, width=350, height=45, bgcolor=ft.Colors.BLUE_700)
     btn_cancelar = ft.TextButton("Volver a Modificar", on_click=lambda _: cambiar_vista_func("productos"))
 
-    # Estructura del resumen visual
     resumen_tarjeta = ft.Container(
         content=ft.Column(
             controls=[

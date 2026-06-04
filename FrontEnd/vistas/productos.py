@@ -13,27 +13,25 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    # --- Lógica del Botón Principal ---
+    # --- Lógica de Navegación Intermedia ---
     def btn_crear_producto_click(e):
-        # Validar campos vacíos primero
         if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
             page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
             page.snack_bar.open = True
             page.update()
             return
         
-        # Guardar datos en la sesión temporal para que la otra vista los lea
-        page.session["temp_producto_nombre"] = txt_nombre.value
-        page.session["temp_producto_detalle"] = txt_detalle.value
-        page.session["temp_producto_precio"] = txt_precio.value
+        # Guardar en memoria interna usando la API nativa de Flet 0.85.2
+        page.session.set_value("temp_producto_nombre", txt_nombre.value)
+        page.session.set_value("temp_producto_detalle", txt_detalle.value)
+        page.session.set_value("temp_producto_precio", txt_precio.value)
         
-        # Redireccionar a la nueva interfaz de confirmación
         cambiar_vista_func("confirmar_producto")
 
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
     btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
 
-    # --- Estructura Principal ---
+    # --- Estructura Visual ---
     content_crear = ft.Column(
         controls=[
             ft.Text("Registrar Nuevo Producto", size=26, weight=ft.FontWeight.BOLD),
