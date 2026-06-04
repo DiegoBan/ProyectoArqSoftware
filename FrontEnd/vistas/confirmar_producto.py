@@ -1,15 +1,17 @@
 import flet as ft
 import json
 from soa_lib import send_message
+# Importamos el diccionario global desde la vista de productos
+from vistas.productos import DATOS_PROD_TEMPORAL
 
 def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
+    global DATOS_PROD_TEMPORAL
     
-    # Recuperar strings desde la sesión con la API nativa
-    nombre = page.session.get_value("temp_producto_nombre")
-    detalle = page.session.get_value("temp_producto_detalle")
-    precio = page.session.get_value("temp_producto_precio")
+    # Leer los datos directamente desde Python puro
+    nombre = DATOS_PROD_TEMPORAL["nombre"]
+    detalle = DATOS_PROD_TEMPORAL["detalle"]
+    precio = DATOS_PROD_TEMPORAL["precio"]
 
-    # Envío final al bus de servicios
     def btn_confirmar_click(e):
         payload = {
             "accion": "crear_producto",
@@ -19,18 +21,17 @@ def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
             "estado": "pendiente"
         }
         
-        # Despachar mensaje por el socket
+        # Despachar al bus
         send_message(sock, "produ", json.dumps(payload))
         
-        # Limpiar variables para liberar memoria
-        page.session.remove("temp_producto_nombre")
-        page.session.remove("temp_producto_detalle")
-        page.session.remove("temp_producto_precio")
+        # Limpiar el contenedor global para dejar el formulario vacío la próxima vez
+        DATOS_PROD_TEMPORAL["nombre"] = ""
+        DATOS_PROD_TEMPORAL["detalle"] = ""
+        DATOS_PROD_TEMPORAL["precio"] = ""
         
         page.snack_bar = ft.SnackBar(ft.Text("Producto registrado con éxito"), bgcolor=ft.Colors.GREEN_700)
         page.snack_bar.open = True
         
-        # Retornar al formulario de origen limpio
         cambiar_vista_func("productos")
 
     btn_confirmar = ft.ElevatedButton("Confirmar y Guardar", on_click=btn_confirmar_click, width=350, height=45, bgcolor=ft.Colors.BLUE_700)

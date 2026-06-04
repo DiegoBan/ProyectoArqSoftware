@@ -1,6 +1,14 @@
 import flet as ft
 
+# Variables globales para transferir los datos entre vistas sin usar la sesión de Flet
+DATOS_PROD_TEMPORAL = {
+    "nombre": "",
+    "detalle": "",
+    "precio": ""
+}
+
 def vista_productos(page: ft.Page, sock, cambiar_vista_func):
+    global DATOS_PROD_TEMPORAL
     
     # --- Campos de Formulario ---
     txt_nombre = ft.TextField(label="Nombre del Producto", width=350)
@@ -13,7 +21,13 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    # --- Lógica de Navegación Intermedia ---
+    # Si volvemos de la vista de confirmación, rellenar con lo que ya se había escrito
+    if DATOS_PROD_TEMPORAL["nombre"]:
+        txt_nombre.value = DATOS_PROD_TEMPORAL["nombre"]
+        txt_detalle.value = DATOS_PROD_TEMPORAL["detalle"]
+        txt_precio.value = DATOS_PROD_TEMPORAL["precio"]
+
+    # --- Lógica de Navegación ---
     def btn_crear_producto_click(e):
         if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
             page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
@@ -21,10 +35,10 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             page.update()
             return
         
-        # Guardar en memoria interna usando la API nativa de Flet 0.85.2
-        page.session.set_value("temp_producto_nombre", txt_nombre.value)
-        page.session.set_value("temp_producto_detalle", txt_detalle.value)
-        page.session.set_value("temp_producto_precio", txt_precio.value)
+        # Guardar en el diccionario global nativo de Python
+        DATOS_PROD_TEMPORAL["nombre"] = txt_nombre.value
+        DATOS_PROD_TEMPORAL["detalle"] = txt_detalle.value
+        DATOS_PROD_TEMPORAL["precio"] = txt_precio.value
         
         cambiar_vista_func("confirmar_producto")
 
