@@ -4,7 +4,7 @@ from soa_lib import send_message
 
 def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     
-    # --- [Formulario] Campos de Creación ---
+    # --- Campos de Formulario ---
     txt_nombre = ft.TextField(label="Nombre del Producto", width=350)
     txt_detalle = ft.TextField(label="Detalle / Descripción", width=350, multiline=True, min_lines=2, max_lines=4)
     
@@ -15,42 +15,13 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    productos_pendientes_list = []
-
-    # Lista dinámica simple
-    lista_pendientes_view = ft.Column(
-        controls=[ft.Text("No hay productos pendientes de aprobación.", color=ft.Colors.GREY_500)],
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
-    )
-
-    def actualizar_lista_pendientes():
-        if not productos_pendientes_list:
-            lista_pendientes_view.controls = [ft.Text("No hay productos pendientes de aprobación.", color=ft.Colors.GREY_500)]
-        else:
-            lista_pendientes_view.controls = [
-                ft.ListTile(
-                    leading=ft.Icon(name="hourglass_empty", color=ft.Colors.ORANGE_400),
-                    title=ft.Text(p["nombre"], weight=ft.FontWeight.BOLD),
-                    subtitle=ft.Text(f"Precio: ${p['precio']} | {p['detalle']}"),
-                    # Reemplazamos ft.Chip por un contenedor básico para evitar fallos de versión
-                    trailing=ft.Container(
-                        content=ft.Text("Pendiente", size=12, color=ft.Colors.WHITE),
-                        bgcolor=ft.Colors.SURFACE_VARIANT,
-                        padding=5,
-                        border_radius=5
-                    )
-                ) for p in productos_pendientes_list
-            ]
+    # --- Diálogo de Confirmación (Pop-up) ---
+    def cerrar_modal(e):
+        dialogo_confirmacion.open = False
         page.update()
 
-    # --- Lógica de Envío ---
-    def btn_crear_producto_click(e):
-        if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
-            page.update()
-            return
-        
+    def confirmar_y_enviar(e):
+        # 1. Armar el payload definitivo
         payload = {
             "accion": "crear_producto",
             "nombre": txt_nombre.value,
@@ -59,99 +30,82 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             "estado": "pendiente"
         }
         
+        # 2. Despachar al bus de servicios
         send_message(sock, "produ", json.dumps(payload))
         
-        productos_pendientes_list.append(payload)
-        actualizar_lista_pendientes()
-
+        # 3. Cerrar el modal limpiamente
+        dialogo_confirmacion.open = False
+        
+        # 4. Limpiar los campos del formulario principal
         txt_nombre.value = ""
         txt_detalle.value = ""
         txt_precio.value = ""
         
-        page.snack_bar = ft.SnackBar(ft.Text("Producto enviado a revisión"), bgcolor=ft.Colors.GREEN_700)
-        page.snack_bar.open = True
+        page.update()
+
+    # Estructura del Pop-up intermedio
+    dialogo_confirmacion = ft.AlertDialog(
+        modal=True, # Bloquea el click fuera del recuadro
+        title=ft.Text("¿Seguro que desea subir este producto?", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+        content=ft.Column(
+            controls=[
+                ft.Text("Resumen de los datos ingresados:", size=14, color=ft.Colors.GREY_400),
+                ft.Divider(height=10, color=ft.Colors.GREY_700),
+                # Estos textos se rellenan dinámicamente al presionar el botón principal
+                lbl_resumen_nombre := ft.Text("", weight=ft.FontWeight.W_500),
+                lbl_resumen_precio := ft.Text("", weight=ft.FontWeight.W_500),
+                lbl_resumen_detalle := ft.Text("", size=13, color=ft.Colors.GREY_300),
+            ],
+            tight=True,
+            width=320
+        ),
+        actions=[
+            ft.TextButton("Volver", on_click=cerrar_modal),
+            ft.ElevatedButton("Confirmar", on_click=confirmar_y_enviar, bgcolor=ft.Colors.BLUE_700)
+        ],
+        actions_alignment=ft.MainAxisAlignment.END
+    )
+
+    # --- Lógica del Botón Principal ---
+    def btn_crear_producto_click(e):
+        # Validar campos vacíos primero
+        if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
+            page.snack_bar.open = True
+            page.update()
+            return
+        
+        # Inyectar los datos del formulario al contenido del pop-up
+        lbl_resumen_nombre.value = f"Nombre: {txt_nombre.value}"
+        lbl_resumen_precio.value = f"Precio: ${int(txt_precio.value):,}" # Formato de miles básico
+        lbl_resumen_detalle.value = f"Detalle: {txt_detalle.value}"
+        
+        # Levantar el modal sobre la interfaz actual
+        page.dialog = dialogo_confirmacion
+        dialogo_confirmacion.open = True
         page.update()
 
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
     btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
 
-    # --- Bloques de Contenido ---
+    # --- Estructura Visual Unificada ---
     content_crear = ft.Column(
         controls=[
-            ft.Text("Registrar Nuevo Producto", size=22, weight=ft.FontWeight.BOLD),
-            ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+            ft.Text("Registrar Nuevo Producto", size=26, weight=ft.FontWeight.BOLD),
+            ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
             txt_nombre,
             txt_detalle,
             txt_precio,
-            ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
             btn_guardar,
             btn_volver
         ],
         alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        visible=True
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER
     )
 
-    content_pendientes = ft.Column(
-        controls=[
-            ft.Text("Productos Esperando Aprobación", size=22, weight=ft.FontWeight.BOLD),
-            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            lista_pendientes_view
-        ],
-        alignment=ft.MainAxisAlignment.START,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        visible=False
-    )
-
-    # --- Pestañas Manuales usando Containers (Cero fallos de librería) ---
-    def click_tab_crear(e):
-        content_crear.visible = True
-        content_pendientes.visible = False
-        tab_crear.bgcolor = ft.Colors.BLUE_GREY_700
-        tab_pendientes.bgcolor = ft.Colors.BLACK26
-        page.update()
-
-    def click_tab_pendientes(e):
-        content_crear.visible = False
-        content_pendientes.visible = True
-        tab_crear.bgcolor = ft.Colors.BLACK26
-        tab_pendientes.bgcolor = ft.Colors.BLUE_GREY_700
-        page.update()
-
-    tab_crear = ft.Container(
-        content=ft.Text("Crear Producto", weight=ft.FontWeight.BOLD),
-        padding=12,
-        bgcolor=ft.Colors.BLUE_GREY_700,
-        border_radius=8,
-        on_click=click_tab_crear
-    )
-
-    tab_pendientes = ft.Container(
-        content=ft.Text("Ver Pendientes", weight=ft.FontWeight.BOLD),
-        padding=12,
-        bgcolor=ft.Colors.BLACK26,
-        border_radius=8,
-        on_click=click_tab_pendientes
-    )
-
-    menu_pestanas = ft.Row(
-        controls=[tab_crear, tab_pendientes],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=15
-    )
-
-    # --- Render ---
     return ft.Container(
-        content=ft.Column(
-            controls=[
-                menu_pestanas,
-                ft.Divider(height=20, color=ft.Colors.GREY_800),
-                content_crear,
-                content_pendientes
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        ),
+        content=content_crear,
         alignment=ft.Alignment.CENTER,
         expand=True,
         padding=20
