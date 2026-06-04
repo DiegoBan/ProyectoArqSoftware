@@ -30,7 +30,7 @@ def main(page: ft.Page):
     # 2. Función de Enrutamiento (Navegación)
     def cambiar_vista(nombre_vista):
         page.controls.clear()
-        
+
         if nombre_vista == "login":
             page.add(vista_login(page, sock)) 
         elif nombre_vista == "crear_usuario":
@@ -39,8 +39,6 @@ def main(page: ft.Page):
             page.add(vista_dashboard(page, sock, cambiar_vista))
         elif nombre_vista == "productos":
             page.add(vista_productos(page, sock, cambiar_vista))
-        elif nombre_vista == "ventas":
-            page.add(vista_ventas(page, sock, cambiar_vista))
         elif nombre_vista == "confirmar_producto":
             page.add(vista_confirmar_producto(page, sock, cambiar_vista))
         elif nombre_vista == "ventas":
@@ -50,7 +48,7 @@ def main(page: ft.Page):
         elif nombre_vista == "estado_cotizaciones":
             page.add(vista_estado_cotizaciones(page, sock, cambiar_vista))
 
-                page.update()
+        page.update()
 
     # 3. Hilo de Escucha 
     def escuchar_bus():
