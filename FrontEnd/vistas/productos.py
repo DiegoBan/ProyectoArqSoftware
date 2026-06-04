@@ -1,6 +1,7 @@
 import flet as ft
 
-# Variables globales para transferir los datos entre vistas sin usar la sesión de Flet
+# Diccionario global en Python puro. 
+# Funciona en cualquier versión porque no depende de la API de Flet.
 DATOS_PROD_TEMPORAL = {
     "nombre": "",
     "detalle": "",
@@ -21,13 +22,13 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    # Si volvemos de la vista de confirmación, rellenar con lo que ya se había escrito
+    # Si el usuario presiona "Volver" desde la confirmación, se rellenan los datos automáticamente
     if DATOS_PROD_TEMPORAL["nombre"]:
         txt_nombre.value = DATOS_PROD_TEMPORAL["nombre"]
         txt_detalle.value = DATOS_PROD_TEMPORAL["detalle"]
         txt_precio.value = DATOS_PROD_TEMPORAL["precio"]
 
-    # --- Lógica de Navegación ---
+    # --- Lógica del Botón Principal ---
     def btn_crear_producto_click(e):
         if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
             page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
@@ -35,11 +36,12 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             page.update()
             return
         
-        # Guardar en el diccionario global nativo de Python
+        # Guardar datos en el contenedor global de Python
         DATOS_PROD_TEMPORAL["nombre"] = txt_nombre.value
         DATOS_PROD_TEMPORAL["detalle"] = txt_detalle.value
         DATOS_PROD_TEMPORAL["precio"] = txt_precio.value
         
+        # Redirección mediante el enrutador de tu main.py
         cambiar_vista_func("confirmar_producto")
 
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
