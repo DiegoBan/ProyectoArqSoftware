@@ -2,7 +2,6 @@ import flet as ft
 import json
 from datetime import datetime
 from soa_lib import send_message
-# Importamos el historial global para poder guardar directamente
 from vistas.historial_ventas import HISTORIAL_COTIZACIONES
 
 def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
@@ -98,11 +97,9 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
             page.update()
             return
 
-        # Generar ID Autoincremental básico
         nuevo_id = f"COT-0{len(HISTORIAL_COTIZACIONES) + 1:02d}"
         calculo_total = cant * int(txt_precio_final.value)
 
-        # 1. Guardar localmente para verlo reflejado de inmediato en la tabla
         nueva_cot = {
             "id": nuevo_id,
             "cliente": dropdown_cliente.value,
@@ -115,7 +112,6 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
         }
         HISTORIAL_COTIZACIONES.append(nueva_cot)
 
-        # 2. Construir payload definitivo para enviar por el Bus SOA
         payload = {
             "accion": "crear_cotizacion",
             "id": nuevo_id,
@@ -130,14 +126,12 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
         page.snack_bar = ft.SnackBar(ft.Text("Cotización generada exitosamente"), bgcolor=ft.Colors.GREEN_700)
         page.snack_bar.open = True
         
-        # Reset de interfaz
         dropdown_cliente.value = None
         dropdown_producto.value = None
         txt_cantidad.value = "1"
         txt_precio_final.value = ""
         lbl_status_stock.value = ""
         
-        # Redirigir de vuelta al menú secundario de ventas
         cambiar_vista_func("ventas")
 
     btn_generar = ft.Button("Generar Cotización", on_click=btn_crear_cotizacion_click, width=350, height=45)

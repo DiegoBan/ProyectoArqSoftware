@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from soa_lib import send_message
 
-# Diccionario global en Python para simular la base de datos de cotizaciones
+# Diccionario global de Python para mantener los datos sincronizados entre pantallas
 HISTORIAL_COTIZACIONES = [
     {
         "id": "COT-001",
@@ -30,11 +30,10 @@ HISTORIAL_COTIZACIONES = [
 def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
     global HISTORIAL_COTIZACIONES
     
-    # Cotización actualmente seleccionada para el panel superior
     cotizacion_seleccionada = None
 
-    # --- Elementos del Panel de Detalles Superior ---
-    lbl_detalle_titulo = ft.Text("Seleccione una cotización de la tabla para gestionarla", size=14, color=ft.Colors.GREY_400)
+    # --- Panel Superior de Detalles ---
+    lbl_detalle_titulo = ft.Text("Seleccione una cotización de la lista de abajo para gestionarla", size=14, color=ft.Colors.GREY_400)
     lbl_info_id = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
     lbl_info_cliente = ft.Text("")
     lbl_info_producto = ft.Text("")
@@ -43,7 +42,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
     
     btn_actualizar = ft.ElevatedButton("Actualizar Estado", visible=False, bgcolor=ft.Colors.BLUE_700)
 
-    # --- Lógica de Actualización de Estado ---
     def procesar_cambio_estado(e):
         nonlocal cotizacion_seleccionada
         if not cotizacion_seleccionada:
@@ -59,11 +57,9 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         elif estado_actual == "oco":
             nuevo_estado = "facturado"
 
-        # 1. Actualizar en nuestra memoria local de Python
         cotizacion_seleccionada["estado"] = nuevo_estado
         cotizacion_seleccionada["fecha_oco"] = fecha_cambio
 
-        # 2. Despachar notificación al bus SOA
         payload = {
             "accion": "actualizar_estado_cotizacion",
             "id": cotizacion_seleccionada["id"],
@@ -72,16 +68,13 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         }
         send_message(sock, "venta", json.dumps(payload))
 
-        # 3. Mostrar Snack Bar de éxito
         page.snack_bar = ft.SnackBar(ft.Text(f"Estado actualizado a {nuevo_estado.upper()}"), bgcolor=ft.Colors.GREEN_700)
         page.snack_bar.open = True
 
-        # 4. Forzar redibujado completo de la interfaz para refrescar la tabla excel
         cambiar_vista_func("estado_cotizaciones")
 
     btn_actualizar.on_click = procesar_cambio_estado
 
-    # --- Lógica al Seleccionar una Fila de la Tabla ---
     def fila_seleccionada(cotizacion_dict):
         nonlocal cotizacion_seleccionada
         cotizacion_seleccionada = cotizacion_dict
@@ -93,7 +86,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         lbl_info_total.value = f"Total: ${cotizacion_dict['precio_total']:,}"
         lbl_info_estado.value = f"Estado Actual: {cotizacion_dict['estado'].upper()}"
         
-        # Configurar dinámicamente el botón de transición de estados
         if cotizacion_dict["estado"] == "cotizado":
             btn_actualizar.text = "Actualizar Estado a OCO"
             btn_actualizar.visible = True
@@ -101,44 +93,51 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             btn_actualizar.text = "Actualizar Estado a Facturado"
             btn_actualizar.visible = True
         else:
-            btn_actualizar.visible = False # Si ya está facturado, no se puede avanzar más
+            btn_actualizar.visible = False
             
         page.update()
 
-    # --- Construcción de la Tabla tipo Excel ---
-    tabla_excel = ft.DataTable(
-        columns=[
-            ft.DataColumn(ft.Text("ID")),
-            ft.DataColumn(ft.Text("Estado")),
-            ft.DataColumn(ft.Text("Cliente")),
-            ft.DataColumn(ft.Text("Cantidad / Prod")),
-            ft.DataColumn(ft.Text("Fecha Cot")),
-            ft.DataColumn(ft.Text("Fecha OCO")),
-        ],
-        rows=[]
+    # --- Cabecera de la Tabla Manual ---
+    cabecera_tabla = ft.Container(
+        content=ft.Row([
+            ft.Text("Acción", width=60, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
+            ft.Text("ID", width=80, weight=ft.FontWeight.BOLD),
+            ft.Text("Estado", width=90, weight=ft.FontWeight.BOLD),
+            ft.Text("Cliente", width=180, weight=ft.FontWeight.BOLD),
+            ft.Text("Cantidad / Producto", width=160, weight=ft.FontWeight.BOLD),
+            ft.Text("Fecha Cot", width=90, weight=ft.FontWeight.BOLD),
+            ft.Text("Fecha OCO", width=90, weight=ft.FontWeight.BOLD),
+        ], alignment=ft.MainAxisAlignment.START),
+        padding=10,
+        bgcolor=ft.Colors.GREY_800,
+        border_radius=5
     )
 
-    # Rellenar la tabla dinámicamente desde el historial global
+    lista_filas_controles = [cabecera_tabla]
+
+    # Renderizar las filas con el formato de borde compatible
     for cot in HISTORIAL_COTIZACIONES:
-        # Truco nativo para capturar el contexto de la fila al hacer click
         def crear_evento_click(c=cot):
             return lambda _: fila_seleccionada(c)
 
-        tabla_excel.rows.append(
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text(cot["id"])),
-                    ft.DataCell(ft.Text(cot["estado"].upper(), weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400 if cot["estado"]=="cotizado" else ft.Colors.ORANGE_400 if cot["estado"]=="oco" else ft.Colors.GREEN_400)),
-                    ft.DataCell(ft.Text(cot["cliente"])),
-                    ft.DataCell(ft.Text(f"{cot['cantidad']}x {cot['producto']}")),
-                    ft.DataCell(ft.Text(cot["fecha"])),
-                    ft.DataCell(ft.Text(cot["fecha_oco"])),
-                ],
-                on_select_changed=crear_evento_click()
-            )
-        )
+        color_estado = ft.Colors.BLUE_400 if cot["estado"] == "cotizado" else ft.Colors.ORANGE_400 if cot["estado"] == "oco" else ft.Colors.GREEN_400
 
-    # --- Maquetación de los Paneles ---
+        fila_renderizada = ft.Container(
+            content=ft.Row([
+                ft.TextButton("Ver", width=60, on_click=crear_evento_click()),
+                ft.Text(cot["id"], width=80),
+                ft.Text(cot["estado"].upper(), width=90, weight=ft.FontWeight.BOLD, color=color_estado),
+                ft.Text(cot["cliente"], width=180),
+                ft.Text(f"{cot['cantidad']}x {cot['producto']}", width=160),
+                ft.Text(cot["fecha"], width=90),
+                ft.Text(cot["fecha_oco"], width=90),
+            ], alignment=ft.MainAxisAlignment.START),
+            padding=5,
+            # CORRECCIÓN: Usamos la clase de inicialización directa de Border válida para 0.85.2
+            border=ft.Border(bottom=ft.BorderSide(1, ft.Colors.GREY_800))
+        )
+        lista_filas_controles.append(fila_renderizada)
+
     panel_detalles = ft.Container(
         content=ft.Column([
             lbl_detalle_titulo,
@@ -151,7 +150,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         padding=15,
         bgcolor=ft.Colors.GREY_900,
         border_radius=8,
-        width=350
+        width=380
     )
 
     panel_acciones = ft.Container(
@@ -163,27 +162,20 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         padding=15,
         bgcolor=ft.Colors.GREY_900,
         border_radius=8,
-        width=250,
+        width=240,
         height=160
-    )
-
-    bloque_superior = ft.Row(
-        [panel_detalles, panel_acciones],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=20
     )
 
     btn_volver = ft.TextButton("Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
 
-    # --- Render Global ---
     return ft.Container(
         content=ft.Column([
             ft.Text("Estado de Cotizaciones", size=24, weight=ft.FontWeight.BOLD),
             ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            bloque_superior,
+            ft.Row([panel_detalles, panel_acciones], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
             ft.Divider(height=20, color=ft.Colors.GREY_800),
-            ft.Text("Historial de Documentos Registrados (Haga click en una fila para gestionar):", size=12, color=ft.Colors.GREY_400),
-            ft.ListView([tabla_excel], expand=True, spacing=10, height=250),
+            ft.Text("Historial de Documentos Registrados:", size=12, color=ft.Colors.GREY_400),
+            ft.Column(controls=lista_filas_controles, spacing=0, expand=True),
             ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
             btn_volver
         ], alignment=ft.MainAxisAlignment.START, horizontal_alignment=ft.CrossAxisAlignment.CENTER),

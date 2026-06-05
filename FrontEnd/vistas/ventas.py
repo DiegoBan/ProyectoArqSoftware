@@ -2,54 +2,51 @@ import flet as ft
 
 def vista_dashboard_ventas(page: ft.Page, sock, cambiar_vista_func):
     
-    # Redirecciones a las sub-vistas
     def ir_a_nueva(e):
         cambiar_vista_func("nueva_cotizacion")
         
     def ir_a_estados(e):
         cambiar_vista_func("estado_cotizaciones")
 
-    # Tarjeta para crear
-    card_nueva = ft.Container(
-        content=ft.Column([
-            ft.Icon(name="add_shopping_cart", size=40, color=ft.Colors.BLUE_400),
-            ft.Text("Nueva Cotización", size=18, weight=ft.FontWeight.BOLD),
-            ft.Text("Generar un nuevo documento de venta", size=12, color=ft.Colors.GREY_400, text_align=ft.TextAlign.CENTER)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=20,
-        bgcolor=ft.Colors.GREY_900,
-        border_radius=10,
-        width=200,
-        height=180,
-        on_click=ir_a_nueva
+    # Usamos EXACTAMENTE la misma sintaxis que te funciona en tu home.py:
+    # ft.Button("Texto", icon="nombre_icono", width=..., height=...)
+    btn_nueva_cotizacion = ft.Button(
+        "Nueva Cotización", 
+        icon="add_shopping_cart",
+        on_click=ir_a_nueva,
+        width=350, 
+        height=45
     )
 
-    # Tarjeta para ver estados
-    card_estados = ft.Container(
-        content=ft.Column([
-            ft.Icon(name="assignment", size=40, color=ft.Colors.ORANGE_400),
-            ft.Text("Estado Cotizaciones", size=18, weight=ft.FontWeight.BOLD),
-            ft.Text("Seguimiento, OCO y Facturación", size=12, color=ft.Colors.GREY_400, text_align=ft.TextAlign.CENTER)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=20,
-        bgcolor=ft.Colors.GREY_900,
-        border_radius=10,
-        width=200,
-        height=180,
-        on_click=ir_a_estados
+    btn_estado_cotizaciones = ft.Button(
+        "Estado Cotizaciones", 
+        icon="assignment",
+        on_click=ir_a_estados,
+        width=350, 
+        height=45
     )
 
-    btn_volver = ft.TextButton("Volver al Dashboard Principal", on_click=lambda _: cambiar_vista_func("dashboard"))
+    btn_volver = ft.TextButton(
+        "Volver al Dashboard Principal", 
+        on_click=lambda _: cambiar_vista_func("dashboard")
+    )
 
     return ft.Container(
-        content=ft.Column([
-            ft.Text("Módulo de Ventas", size=28, weight=ft.FontWeight.BOLD),
-            ft.Text("Seleccione la acción que desea realizar", size=14, color=ft.Colors.GREY_400),
-            ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
-            ft.Row([card_nueva, card_estados], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
-            ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
-            btn_volver
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        alignment=ft.Alignment.CENTER,
-        expand=True
+        content=ft.Column(
+            controls=[
+                ft.Text("Módulo de Ventas", size=26, weight=ft.FontWeight.BOLD),
+                ft.Text("Seleccione la acción que desea realizar", size=14, color=ft.Colors.GREY_400),
+                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                btn_nueva_cotizacion,
+                ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+                btn_estado_cotizaciones,
+                ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
+                btn_volver
+            ], 
+            alignment=ft.MainAxisAlignment.CENTER, 
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        ),
+        alignment=ft.Alignment(0, 0),
+        expand=True,
+        padding=20
     )
