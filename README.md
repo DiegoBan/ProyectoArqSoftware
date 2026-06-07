@@ -394,15 +394,56 @@ Servicio que recopila los datos necesarios para crear los distintos gráficos. G
 
 #### 1. Gráfico de clientes (`grafico_clientes`)
 
-Provee de los datos necesarios para generar un gráfico histórico que muestre el volumen de ventas
-segmentado por cada cliente, así como el detalle de su deuda activa, con la capacidad
-de agrupar y filtrar la información por mes y por año.
+Provee de los datos necesarios para generar un gráfico histórico que muestre el volumen de ventas, segmentado por cada cliente, así como el detalle de su deuda activa, con la capacidad de agrupar y filtrar la información por mes y por año.
 
 **JSON esperado desde el cliente**
 ```json
 {
 "accion": "grafico_clientes",
-""
+"fecha_inicio": "2025-06",
+"fecha_fin": "2026-06",
+"agrupar": "mes"
+}
+```
+**JSON que retorna función**
+```json
+{
+"estado": "ok",
+"mensaje": "Datos obtenidos correctamente",
+"clientes": [
+  {
+    "id_cliente": 1,
+    "nombre_cliente": "colo-colo",
+    "periodos": [
+      {
+        "per": "2026-01", //  año, mes
+        "ventas": 5500000,  //  ventas totales
+        "deuda": 1200000  //  deuda activa del mes
+      },
+      {
+        "per": "2026-02",
+        "ventas": 1500000,
+        "deuda": 1500000
+      }
+    ]
+  },
+  {
+    "id_cliente": 2,
+    "nombre_cliente": "udechile",
+    "periodos": [
+      {
+        "per": "2026-01",
+        "ventas": 1500000,
+        "deuda": 1100000,
+      },
+      {
+        "per": "2026-02",
+        "ventas": 100,
+        "deuda": 0
+      }
+    ]
+  }
+]
 }
 ```
 
