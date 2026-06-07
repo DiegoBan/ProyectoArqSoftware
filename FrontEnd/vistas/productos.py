@@ -1,17 +1,14 @@
 import flet as ft
 
-# Diccionario global en Python puro. 
-# Funciona en cualquier versión porque no depende de la API de Flet.
 DATOS_PROD_TEMPORAL = {
     "nombre": "",
     "detalle": "",
     "precio": ""
 }
-
+ 
 def vista_productos(page: ft.Page, sock, cambiar_vista_func):
     global DATOS_PROD_TEMPORAL
     
-    # --- Campos de Formulario ---
     txt_nombre = ft.TextField(label="Nombre del Producto", width=350)
     txt_detalle = ft.TextField(label="Detalle / Descripción", width=350, multiline=True, min_lines=2, max_lines=4)
     
@@ -22,13 +19,11 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
         input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
     )
 
-    # Si el usuario presiona "Volver" desde la confirmación, se rellenan los datos automáticamente
     if DATOS_PROD_TEMPORAL["nombre"]:
         txt_nombre.value = DATOS_PROD_TEMPORAL["nombre"]
         txt_detalle.value = DATOS_PROD_TEMPORAL["detalle"]
         txt_precio.value = DATOS_PROD_TEMPORAL["precio"]
 
-    # --- Lógica del Botón Principal ---
     def btn_crear_producto_click(e):
         if not txt_nombre.value or not txt_precio.value or not txt_detalle.value:
             page.snack_bar = ft.SnackBar(ft.Text("Todos los campos son obligatorios"), bgcolor=ft.Colors.ORANGE_700)
@@ -36,18 +31,15 @@ def vista_productos(page: ft.Page, sock, cambiar_vista_func):
             page.update()
             return
         
-        # Guardar datos en el contenedor global de Python
         DATOS_PROD_TEMPORAL["nombre"] = txt_nombre.value
         DATOS_PROD_TEMPORAL["detalle"] = txt_detalle.value
         DATOS_PROD_TEMPORAL["precio"] = txt_precio.value
         
-        # Redirección mediante el enrutador de tu main.py
         cambiar_vista_func("confirmar_producto")
 
     btn_guardar = ft.Button("Subir Producto", on_click=btn_crear_producto_click, width=350, height=45)
     btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
 
-    # --- Estructura Visual ---
     content_crear = ft.Column(
         controls=[
             ft.Text("Registrar Nuevo Producto", size=26, weight=ft.FontWeight.BOLD),

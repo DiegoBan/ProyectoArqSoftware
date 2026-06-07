@@ -68,13 +68,13 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
             txt_precio_final.value = str(precio_sugerido)
 
         if stock_actual == 0:
-            lbl_status_stock.value = "❌ SIN STOCK DISPONIBLE"
+            lbl_status_stock.value = "SIN STOCK DISPONIBLE"
             lbl_status_stock.color = ft.Colors.RED_400
         elif cant_solicitada > stock_actual:
-            lbl_status_stock.value = f"⚠️ Stock insuficiente (Quedan {stock_actual} un.)"
+            lbl_status_stock.value = f"Stock insuficiente (Quedan {stock_actual} un.)"
             lbl_status_stock.color = ft.Colors.ORANGE_400
         else:
-            lbl_status_stock.value = f"✅ Stock disponible ({stock_actual} un.)"
+            lbl_status_stock.value = f"Stock disponible ({stock_actual} un.)"
             lbl_status_stock.color = ft.Colors.GREEN_400
         page.update()
 
@@ -112,8 +112,11 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
         }
         HISTORIAL_COTIZACIONES.append(nueva_cot)
 
+        rut_vendedor_actual = page.session.store.get("rut")
+
         payload = {
             "accion": "crear_cotizacion",
+            "user": rut_vendedor_actual,
             "id": nuevo_id,
             "cliente": dropdown_cliente.value,
             "producto": prod,

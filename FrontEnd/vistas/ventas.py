@@ -8,8 +8,6 @@ def vista_dashboard_ventas(page: ft.Page, sock, cambiar_vista_func):
     def ir_a_estados(e):
         cambiar_vista_func("estado_cotizaciones")
 
-    # Usamos EXACTAMENTE la misma sintaxis que te funciona en tu home.py:
-    # ft.Button("Texto", icon="nombre_icono", width=..., height=...)
     btn_nueva_cotizacion = ft.Button(
         "Nueva Cotización", 
         icon="add_shopping_cart",
