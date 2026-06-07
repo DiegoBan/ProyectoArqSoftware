@@ -383,3 +383,58 @@ En cuanto a la actualización excepcional se realiza para pasar de COTIZACION a 
 ```
 
 #### 4. Entrega parcial (`entrega_par`)
+
+
+---
+### Servicio Análisis de Datos
+
+Servicio que recopila los datos necesarios para crear los distintos gráficos. Gráficos que se utilizan para realizar correctos análisis sobre el estado actual del negocio.
+
+### Tareas del Servicio
+
+#### 1. Gráfico de clientes (`grafico_clientes`)
+
+Provee de los datos necesarios para generar un gráfico histórico que muestre el volumen de ventas
+segmentado por cada cliente, así como el detalle de su deuda activa, con la capacidad
+de agrupar y filtrar la información por mes y por año.
+
+**JSON esperado desde el cliente**
+```json
+{
+"accion": "grafico_clientes",
+""
+}
+```
+
+#### 2. Gráfico productos (`grafico_productos`)
+
+Provee de los datos necesarios para crear un gráfico de ventas de los productos.
+
+**JSON esperado desde el cliente**
+```json
+{
+"accion": "grafico_productos",
+"fecha_inicio": "2025-06-10",
+"fecha_fin": "2026-06-10"
+}
+```
+- Si todo sale bien, retorna JSON con los productos y la cantidad vendida en orden descendiente:
+**JSON retornado de ejemplo**
+```json
+{
+"estado": "ok",
+"mensaje": "Datos obtenidos correctamente",
+"datos": [
+  {
+    "id_producto": 2,
+    "nombre": "Notebook ThinkPad",
+    "cantidad": 10
+  },
+  {
+    "id_producto": 1,
+    "nombre": "Tubo de Cobre 1/2",
+    "cantidad": 2
+  }
+]
+}
+```

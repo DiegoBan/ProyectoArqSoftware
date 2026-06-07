@@ -86,3 +86,20 @@ services:
     depends_on:
       - bus
       - db
+  
+  analisis:
+    image: python:3.10-slim
+    container_name: servicio_analisis
+    environment: 
+      - PYTHONUNBUFFERED=1
+      - DB:HOST=db
+      - DB_USER=admin
+      - DB_PASS=colocolo
+      - DB_NAME=db
+    volumes:
+      - ./Analisis:/app
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python analisis.py"
+    depends_on:
+      - bus
+      - db

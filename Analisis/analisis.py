@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect
+from functions import dbconnect, grafico_cliente, grafico_productos
 import json
 
 sock = connect_to_bus()
@@ -33,9 +33,12 @@ try:
         accion = datos_json.get("accion")
         print(f"Realizando acción: '{accion}'")
         match accion:
-            case "aa":
-                datos_json = 
-                send_message(sock, "clien", datos_json)
+            case "grafico_clientes":
+                datos_json = grafico_cliente(db, datos_json)
+                send_message(sock, "front", datos_json)
+            case "grafico_productos":
+                datos_json = grafico_productos(db, datos_json)
+                send_message(sock, "front", datos_json)
 except Exception as e:
     print(f"Error en el servicio: {e}")
 finally:
