@@ -1,31 +1,29 @@
 import flet as ft
 import json
 from soa_lib import send_message
-# Importamos las variables desde el archivo de productos
 from vistas.productos import DATOS_PROD_TEMPORAL
 
 def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
     global DATOS_PROD_TEMPORAL
     
-    # Extraer variables limpias
     nombre = DATOS_PROD_TEMPORAL["nombre"]
     detalle = DATOS_PROD_TEMPORAL["detalle"]
     precio = DATOS_PROD_TEMPORAL["precio"]
 
-    # Acción definitiva de guardado
     def btn_confirmar_click(e):
+        rut_admin_actual = page.session.store.get("rut") 
+
         payload = {
             "accion": "crear_producto",
+            "user": rut_admin_actual, 
             "nombre": nombre,
             "detalle": detalle,
             "precio": int(precio),
             "estado": "pendiente"
         }
         
-        # Despachar el JSON serializado por el socket al Bus ("produ")
         send_message(sock, "produ", json.dumps(payload))
         
-        # Vaciar el contenedor global de Python para que la próxima vez el formulario inicie limpio
         DATOS_PROD_TEMPORAL["nombre"] = ""
         DATOS_PROD_TEMPORAL["detalle"] = ""
         DATOS_PROD_TEMPORAL["precio"] = ""
@@ -33,13 +31,11 @@ def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
         page.snack_bar = ft.SnackBar(ft.Text("Producto registrado con éxito"), bgcolor=ft.Colors.GREEN_700)
         page.snack_bar.open = True
         
-        # Retornar al formulario de productos original
         cambiar_vista_func("productos")
 
     btn_confirmar = ft.ElevatedButton("Confirmar y Guardar", on_click=btn_confirmar_click, width=350, height=45, bgcolor=ft.Colors.BLUE_700)
     btn_cancelar = ft.TextButton("Volver a Modificar", on_click=lambda _: cambiar_vista_func("productos"))
 
-    # Estructura del contenedor de resumen
     resumen_tarjeta = ft.Container(
         content=ft.Column(
             controls=[
@@ -58,7 +54,7 @@ def vista_confirmar_producto(page: ft.Page, sock, cambiar_vista_func):
             tight=True
         ),
         padding=30,
-        bgcolor=ft.Colors.GREY_900, # Constante primitiva universal, 100% segura
+        bgcolor=ft.Colors.GREY_900,
         border_radius=10,
         width=400
     )

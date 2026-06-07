@@ -3,7 +3,6 @@ import json
 from datetime import datetime
 from soa_lib import send_message
 
-# Diccionario global de Python para mantener los datos sincronizados entre pantallas
 HISTORIAL_COTIZACIONES = [
     {
         "id": "COT-001",
@@ -32,7 +31,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
     
     cotizacion_seleccionada = None
 
-    # --- Panel Superior de Detalles ---
     lbl_detalle_titulo = ft.Text("Seleccione una cotización de la lista de abajo para gestionarla", size=14, color=ft.Colors.GREY_400)
     lbl_info_id = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
     lbl_info_cliente = ft.Text("")
@@ -60,8 +58,11 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         cotizacion_seleccionada["estado"] = nuevo_estado
         cotizacion_seleccionada["fecha_oco"] = fecha_cambio
 
+        rut_operador_actual = page.session.store.get("rut")
+
         payload = {
             "accion": "actualizar_estado_cotizacion",
+            "user": rut_operador_actual,
             "id": cotizacion_seleccionada["id"],
             "nuevo_estado": nuevo_estado,
             "fecha_oco": fecha_cambio
@@ -97,7 +98,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             
         page.update()
 
-    # --- Cabecera de la Tabla Manual ---
     cabecera_tabla = ft.Container(
         content=ft.Row([
             ft.Text("Acción", width=60, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
@@ -115,7 +115,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
 
     lista_filas_controles = [cabecera_tabla]
 
-    # Renderizar las filas con el formato de borde compatible
     for cot in HISTORIAL_COTIZACIONES:
         def crear_evento_click(c=cot):
             return lambda _: fila_seleccionada(c)
@@ -133,7 +132,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
                 ft.Text(cot["fecha_oco"], width=90),
             ], alignment=ft.MainAxisAlignment.START),
             padding=5,
-            # CORRECCIÓN: Usamos la clase de inicialización directa de Border válida para 0.85.2
             border=ft.Border(bottom=ft.BorderSide(1, ft.Colors.GREY_800))
         )
         lista_filas_controles.append(fila_renderizada)
