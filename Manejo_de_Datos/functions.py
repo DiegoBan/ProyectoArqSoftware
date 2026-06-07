@@ -115,29 +115,30 @@ def actualizar_cotizacion(db, datos_json):
             "estado": "error",
             "mensaje": "Error interno del servidor"
         })
-
-def actualizar_excep(db, datos_json):
-    print("Atendiendo peticion de actualizacion excepcional...")
+        
+def ver_detalles(db, datos_json):
+    print("<-- Ver detalles de cotizacion --->")
+    query = """
+        SELECT fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia
+        FROM ventas
+        JOIN clientes ON ventas.id_cliente = clientes.id
+        JOIN venta_detalle ON ventas.COT = venta_detalle.id_venta
+        JOIN productos ON productos.id = venta_detalle.id_producto
+        LEFT JOIN guia_despacho ON guia_despacho.id_venta = ventas.COT
+        LEFT JOIN guia_detalle ON guia_detalle.numero_guia = guia_despacho.numero_guia 
+            AND guia_detalle.id_producto = venta_detalle.id_producto
+        WHERE ventas.COT = %s;
+    """
     try:
-        verify_user = """
-        SELECT rol
-        FROM usuarios
-        WHERE rut = %s;
-        """
-        db.execute(verify_user, (datos_json["user"],))
-        resultado = db.fetchone()
-        rol = resultado[0]
-        if rol != "Dueño":
-            print("No tiene rol permitido para esta acción")
-            return json.dumps({
-                "estado": "error",
-                "mensaje": "No cumple con rol necesario para esta acción"
-            })
-        #   No se bien como seguir esto
+        db.execute(query, datos_json["numero_cotizacion"])
+        resultado = db.fetchall()
+        print("Se obtuvieron bien los resultados:", resultado)
+        return resultado
     except Exception as e:
-        print("Error al atender petición")
-        db.connection.rollback()
+        print("Error al obtener detalle de venta")
         return json.dumps({
             "estado": "error",
             "mensaje": "Error interno del servidor"
         })
+        
+    

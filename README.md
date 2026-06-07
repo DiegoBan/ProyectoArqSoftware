@@ -369,19 +369,48 @@ Actualiza el estado y datos faltantes de una venta o cotización según los dato
 }
 ```
 
-#### 3. Actualización excepcional (`act_excep`)
+#### 5. Ver detalles (`ver_detalles`)
 
-En cuanto a la actualización excepcional se realiza para pasar de COTIZACION a OCO sin una orden de compra, esta acción solo se puede realizar por alguien con el rol de dueño.
+Esta función es crucial para la auditoría y visualización del ciclo de vida completo de una venta. Realiza una consulta relacional profunda (utilizando tanto JOIN estrictos como LEFT JOIN flexibles) para recopilar los datos de la cotización, la información del cliente, el detalle de los productos comprados y los registros de guías de despacho, incluso si la venta aún no ha sido despachada.
 
-**JSON esperado desde el Cliente:**
-```json
+JSON esperado desde el Cliente:
+```JSON
 {
-"accion": "act_excep",
-"COT": 12345,
-"user": "12.345.678-9"
+  "accion": "ver_detalles",
+  "numero_cotizacion": 12345
 }
 ```
-
+JSON que retorna la función (Ejemplo exitoso):
+```JSON
+{
+  "estado": "ok",
+  "mensaje": "Detalles de cotización obtenidos",
+  "detalles": [
+    {
+      "fecha_creacion": "2026-06-13T10:30:00Z",
+      "estado": "OCO",
+      "fecha_cot": "2026-06-13",
+      "orden_de_compra": "4300027762",
+      "fecha_oco": "2026-06-14",
+      "nota_de_venta": 12233,
+      "numero_factura": null,
+      "fecha_factura": null,
+      "estado_factura": null,
+      "nombre_cliente": "Inmobiliaria Monumental",
+      "cantidad": 5,
+      "precio_unitario": 1000,
+      "nombre": "Tubo de Cobre 1/2",
+      "familia": "Gasfitería",
+      "subfamilia": "Cañerías",
+      "descripcion": "Tubo de cobre tipo L para instalación de agua",
+      "PN": "TC-001-L",
+      "serie": "N/A",
+      "numero_guia": 501,
+      "cantidad_guia": 3
+    }
+  ]
+}
+```
 #### 4. Entrega parcial (`entrega_par`)
 
 

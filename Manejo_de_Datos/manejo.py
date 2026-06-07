@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, crear_cotizacion, actualizar_cotizacion
+from functions import dbconnect, crear_cotizacion, actualizar_cotizacion, ver_detalles
 import json
 
 sock = connect_to_bus()
@@ -39,6 +39,10 @@ try:
             case "act_cot":
                 datos_json = actualizar_cotizacion(db, datos_json)
                 send_message(sock, "front", datos_json)
+            case "ver_detalles":
+                datos_json = ver_detalles(db, datos_json)
+                send_message(sock, "front", datos_json)
+                    
 except Exception as e:
     print(f"Error en el servicio: {e}")
 finally:

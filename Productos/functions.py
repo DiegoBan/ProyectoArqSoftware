@@ -57,7 +57,7 @@ def crear_producto(db, datos_json):
     print("Producto a crear:", datos_json)
     
     query = """
-        INSERT INTO producto (nombre, familia, subfamilia, descripcion, PN, serie)
+        INSERT INTO productos (nombre, familia, subfamilia, descripcion, PN, serie)
         VALUES (%s, %s, %s, %s, %s, %s);
     """
     verify = """
