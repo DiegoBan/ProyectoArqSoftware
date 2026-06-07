@@ -35,13 +35,13 @@ try:
         match accion:
             case "obtener_clientes":
                 datos_json = obtener_clientes(db)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
             case "actualizar_cliente":
                 datos_json = actualizar_cliente(db, datos_json)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
             case "regitrar_cliente":
                 datos_json = registrar_cliente(db, datos_json)
-                send_message(sock, "clien", datos_json)
+                send_message(sock, "front", datos_json)
 
 except Exception as e:
     print(f"Error en el servicio: {e}")
