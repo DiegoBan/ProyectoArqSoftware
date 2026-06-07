@@ -42,7 +42,10 @@ CREATE TABLE IF NOT EXISTS ventas (
     fecha_cot DATE,
     orden_de_compra VARCHAR(12),
     fecha_oco DATE,
-    nota_de_venta NUMERIC(5, 0)
+    nota_de_venta NUMERIC(5, 0),
+    numero_factura NUMERIC(6, 0),
+    fecha_factura DATE,
+    estado_factura VARCHAR(10)
 );
 
 CREATE TABLE IF NOT EXISTS venta_detalle (
@@ -51,20 +54,6 @@ CREATE TABLE IF NOT EXISTS venta_detalle (
     cantidad INT NOT NULL,
     precio_unitario INT NOT NULL,
     PRIMARY KEY (id_venta, id_producto)
-);
-
-CREATE TABLE IF NOT EXISTS facturas (
-    NFAC NUMERIC(6, 0) PRIMARY KEY,
-    id_venta NUMERIC(5, 0) REFERENCES ventas(COT) ON DELETE CASCADE,
-    fecha_emision DATE NOT NULL,
-    estado VARCHAR(10) DEFAULT "PENDIENTE"
-);
-
-CREATE TABLE IF NOT EXISTS factura_detalle (
-    NFAC NUMERIC(6, 0) REFERENCES facturas(NFAC) ON DELETE CASCADE,
-    id_producto INT REFERENCES productos(id) ON DELETE CASCADE,
-    cantidad INT NOT NULL,
-    PRIMARY KEY (id_factura, id_producto)
 );
 
 CREATE TABLE IF NOT EXISTS guia_despacho (
