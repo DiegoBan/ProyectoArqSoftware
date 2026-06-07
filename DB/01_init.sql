@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS ventas (
     COT NUMERIC(5, 0) PRIMARY KEY,
     id_cliente INT REFERENCES clientes(id) ON DELETE CASCADE,
     fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    estado NUMERIC(1, 0) NOT NULL,
+    estado VARCHAR(10) DEFAULT "COTIZADO",
     fecha_cot DATE,
-    orden_de_compra NUMERIC(12, 0),
+    orden_de_compra VARCHAR(12),
     fecha_oco DATE,
     nota_de_venta NUMERIC(5, 0)
 );
@@ -54,14 +54,14 @@ CREATE TABLE IF NOT EXISTS venta_detalle (
 );
 
 CREATE TABLE IF NOT EXISTS facturas (
-    id SERIAL PRIMARY KEY,
+    NFAC NUMERIC(6, 0) PRIMARY KEY,
     id_venta NUMERIC(5, 0) REFERENCES ventas(COT) ON DELETE CASCADE,
     fecha_emision DATE NOT NULL,
-    estado NUMERIC(1, 0) NOT NULL
+    estado VARCHAR(10) DEFAULT "PENDIENTE"
 );
 
 CREATE TABLE IF NOT EXISTS factura_detalle (
-    id_factura INT REFERENCES facturas(id) ON DELETE CASCADE,
+    NFAC NUMERIC(6, 0) REFERENCES facturas(NFAC) ON DELETE CASCADE,
     id_producto INT REFERENCES productos(id) ON DELETE CASCADE,
     cantidad INT NOT NULL,
     PRIMARY KEY (id_factura, id_producto)
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS guia_despacho (
 );
 
 CREATE TABLE IF NOT EXISTS guia_detalle (
-    id_guia INT REFERENCES guia_despacho(numero_guia) ON DELETE CASCADE,
+    numero_guia NUMERIC(4, 0) REFERENCES guia_despacho(numero_guia) ON DELETE CASCADE,
     id_producto INT REFERENCES productos(id) ON DELETE CASCADE,
     cantidad INT NOT NULL,
     PRIMARY KEY (id_guia, id_producto)

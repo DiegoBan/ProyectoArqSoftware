@@ -69,3 +69,20 @@ services:
     depends_on:
       - bus
       - db
+
+  manejo_de_datos:
+    image: python:3.10-slim
+    container_name: servicio_manejo_de_datos
+    environment: 
+      - PYTHONUNBUFFERED=1
+      - DB:HOST=db
+      - DB_USER=admin
+      - DB_PASS=colocolo
+      - DB_NAME=db
+    volumes:
+      - ./Manejo_de_Datos:/app
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python manejo.py"
+    depends_on:
+      - bus
+      - db

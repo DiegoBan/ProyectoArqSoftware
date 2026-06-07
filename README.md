@@ -50,6 +50,7 @@ docker exec -it postgres_db psql -U admin -d db
 
 La librería utilizada para conectar PostgresSQL con Python será 'psycopg2'.
 
+---
 ### Servicio Usuario
 El servicio **Usuario** tiene la responsabilidad de gestionar las operaciones lógicas sobre la tabla `Usuarios` en la base de datos. Actúa como intermediario: recibe la petición del servicio *Cliente*, valida la información de negocio y construye la consulta SQL para enviarla al servicio *Base de Datos* a través del bus.
 
@@ -264,3 +265,121 @@ Esta función permite registrar un nuevo producto en el inventario. Implementa u
   "PN": "PVC-110-S",
   "serie": "Lote-2023X"
 }
+```
+
+---
+### Servicio Manejo de Datos
+
+Sevicio crítico que administra todo el funcionamiento del negocio y resuelve el problema inicial y objetivo del proyecto. Gestiona inventario y ciclo de vida comercial de una venta.
+
+### Tareas del Servicio
+
+#### 1. Crear cotización (`crear_cot`)
+
+Esta función permite registrar una nueva venta/cotización al sistema junto a todos sus datos relacionados.
+
+**JSON esperado desde el CLiente:**
+```json
+{
+"accion": "crear_cot",
+"COT": 12345,
+"id_cliente": 3,
+"fecha_cot": "2026-06-13",
+"productos": [
+  {
+    "id_producto": 4,
+    "cantidad": 5,
+    "precio_unitario": 1000
+  },
+  {
+    "id_producto": 10,
+    "cantidad": 2,
+    "precio_unitario": 25000
+  }
+]
+}
+```
+Dependiendo de la respuesta, se retornará un JSON distinto:
+- Operación ejecutada con éxtio:
+```json
+{
+"estado": "ok",
+"mensaje": "Cotización creada correctamente"
+}
+```
+- Algún error evitó la creación:
+```json
+{
+"estado": "error",
+"mensaje": "error interno del servidor"
+}
+```
+- Cotización creada con éxito:
+```json
+{
+"estado": "ok",
+"mensaje": "Cotización creada correctamente"
+}
+```
+
+#### 2. Actualización (`act_cot`)
+
+Actualiza el estado y datos faltantes de una venta o cotización según los datos entregados enviados desde el frontend. 
+- En caso de actualizar desde 'COTIZADO' a 'OCO' se debe recibir un JSON como el siguiente:
+```json
+{
+"accion": "act_cot",
+"COT": 12345,
+"orden_de_compra": "4300027762",
+"fecha_oco": "2026-06-14",
+"nota_de_venta": 12233
+}
+```
+- En caso de actualizar desde 'OCO' a 'FACTURADO' se debe recibir un JSON como el siguiente:
+```json
+{
+"accion": "act_cot",
+"COT": 12345,
+"facturas": [
+  {
+    "numero_factura": 11223,
+    "fecha": "2026-06-15",
+    "productos": [
+      {
+        "id_producto": 4,
+        "cantidad": 5
+      },
+      {
+        "id_producto": 10,
+        "cantidad": 1
+      }
+    ]
+  },
+  {
+    "numero_factura": 11224,
+    "fecha": "2026-06-15",
+    "productos" [
+      {
+        "id_producto": 10,
+        "cantidad": 1
+      }
+    ]
+  }
+]
+}
+```
+
+#### 3. Actualización excepcional (`act_excep`)
+
+En cuanto a la actualización excepcional se realiza para pasar de COTIZACION a OCO sin una orden de compra, esta acción solo se puede realizar por alguien con el rol de dueño.
+
+**JSON esperado desde el Cliente:**
+```json
+{
+"accion": "act_excep",
+"COT": 12345,
+"user": "12.345.678-9"
+}
+```
+
+#### 4. Entrega parcial (`entrega_par`)
