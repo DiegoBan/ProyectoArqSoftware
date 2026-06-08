@@ -253,6 +253,23 @@ Este método se encarga de consultar la base de datos para extraer todo el catá
 
 Esta función permite registrar un nuevo producto en el inventario. Implementa una validación de seguridad estricta para asegurar que únicamente los usuarios administradores (verificados mediante su RUT en el campo `user`) puedan añadir artículos nuevos al catálogo.
 
+El cliente Frontend (`productos.py` y `confirmar_producto.py`) maneja un flujo de persistencia temporal intermedia antes de impactar el bus.
+
+**Campos Obligatorios:**
+* `nombre`: Nombre descriptivo del artículo.
+* `familia`: Categoría principal.
+* `descripcion`: Detalle explícito (soporta multilinea).
+
+**Campos Opcionales/Técnicos:**
+* `subfamilia`: Subcategoría complementaria.
+* `PN`: Part Number identificador de fábrica.
+* `serie`: Código de serie único (Validación estricta en frontend: **Máximo 5 caracteres**).
+
+**Flujo de la Petición:**
+1. Los datos se validan localmente y se almacenan en un diccionario global temporal (`DATOS_PROD_TEMPORAL`).
+2. Se solicita una segunda pantalla de confirmación visual (`vista_confirmar_producto`).
+3. Al confirmar, se despacha el payload al servicio centralizado `produ` y se limpian las estructuras volátiles.
+
 **JSON esperado desde el Cliente:**
 ```json
 {
@@ -263,7 +280,7 @@ Esta función permite registrar un nuevo producto en el inventario. Implementa u
   "subfamilia": "Desagüe",
   "descripcion": "Tubo de PVC sanitario de 6 metros",
   "PN": "PVC-110-S",
-  "serie": "Lote-2023X"
+  "serie": "L2023"
 }
 ```
 
@@ -276,31 +293,28 @@ Sevicio crítico que administra todo el funcionamiento del negocio y resuelve el
 
 #### 1. Crear cotización (`crear_cot`)
 
-Esta función permite registrar una nueva venta/cotización al sistema junto a todos sus datos relacionados.
+Esta función permite registrar una nueva venta/cotización en el sistema junto a todos sus datos relacionados. 
 
-**JSON esperado desde el CLiente:**
+Al cargar la vista en el Frontend (`nueva_cotizacion.py`), se ejecuta un hilo asíncrono en segundo plano (`asyncio.to_thread`) que consulta de manera secuencial y bloqueante los servicios `clien` (acción `obtener_clientes`) y `produ` (acción `obtener_productos`) para poblar los selectores dinámicos antes de permitir el guardado.
+
+**JSON esperado desde el Cliente:**
 ```json
 {
-"accion": "crear_cot",
-"COT": 12345,
-"id_cliente": 3,
-"fecha_cot": "2026-06-13",
-"productos": [
-  {
-    "id_producto": 4,
-    "cantidad": 5,
-    "precio_unitario": 1000
-  },
-  {
-    "id_producto": 10,
-    "cantidad": 2,
-    "precio_unitario": 25000
-  }
-]
+  "accion": "crear_cot",
+  "COT": 12345,
+  "id_cliente": 3,
+  "fecha_cot": "2026-06-13",
+  "productos": [
+    {
+      "id_producto": 4,
+      "cantidad": 5,
+      "precio_unitario": 1000
+    }
+  ]
 }
 ```
 Dependiendo de la respuesta, se retornará un JSON distinto:
-- Operación ejecutada con éxtio:
+- Operación ejecutada con éxito:
 ```json
 {
 "estado": "ok",
@@ -328,20 +342,30 @@ Actualiza el estado y datos faltantes de una venta o cotización según los dato
 - En caso de actualizar desde 'COTIZADO' a 'OCO' se debe recibir un JSON como el siguiente:
 ```json
 {
-"accion": "act_cot",
-"COT": 12345,
-"orden_de_compra": "4300027762",
-"fecha_oco": "2026-06-14",
-"nota_de_venta": 12233
+  "accion": "act_cot",
+  "COT": 12345,
+  "orden_de_compra": "4300027762",
+  "fecha_oco": "2026-06-14",
+  "nota_de_venta": 12233
 }
 ```
 - En caso de actualizar desde 'OCO' a 'FACTURADO' se debe recibir un JSON como el siguiente:
 ```json
 {
-"accion": "act_cot",
-"COT": 12345,
-"numero_factura": 123456,
-"fecha_factura": "2026-06-13"
+  "accion": "act_cot",
+  "COT": 12345,
+  "facturas": [
+    {
+      "numero_factura": 123456,
+      "fecha": "2026-06-14",
+      "productos": [
+        {
+          "id_producto": 1,
+          "cantidad": 5
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -352,8 +376,7 @@ Esta función es crucial para la auditoría y visualización del ciclo de vida c
 JSON esperado desde el Cliente:
 ```JSON
 {
-  "accion": "ver_detalles",
-  "numero_cotizacion": 12345
+  "accion": "ver_detalles"
 }
 ```
 JSON que retorna la función (Ejemplo exitoso):
@@ -363,26 +386,23 @@ JSON que retorna la función (Ejemplo exitoso):
   "mensaje": "Detalles de cotización obtenidos",
   "detalles": [
     {
-      "fecha_creacion": "2026-06-13T10:30:00Z",
-      "estado": "OCO",
-      "fecha_cot": "2026-06-13",
-      "orden_de_compra": "4300027762",
-      "fecha_oco": "2026-06-14",
-      "nota_de_venta": 12233,
-      "numero_factura": null,
-      "fecha_factura": null,
-      "estado_factura": null,
+      "COT": 12345,
+      "estado": "COTIZADO",
       "nombre_cliente": "Inmobiliaria Monumental",
+      "id_producto": 1,
+      "nombre": "Tubo de Cobre 1/2",
+      "PN": "TC-001-L",
       "cantidad": 5,
       "precio_unitario": 1000,
-      "nombre": "Tubo de Cobre 1/2",
-      "familia": "Gasfitería",
-      "subfamilia": "Cañerías",
-      "descripcion": "Tubo de cobre tipo L para instalación de agua",
-      "PN": "TC-001-L",
-      "serie": "N/A",
-      "numero_guia": 501,
-      "cantidad_guia": 3
+      "fecha_creacion": "2026-06-13T10:30:00Z",
+      "fecha_cot": "2026-06-13",
+      "orden_de_compra": null,
+      "fecha_oco": null,
+      "nota_de_venta": null,
+      "numero_factura": null,
+      "estado_factura": null,
+      "numero_guia": null,
+      "cantidad_guia": null
     }
   ]
 }
