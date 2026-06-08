@@ -24,7 +24,7 @@ services:
     container_name: servicio_usuario
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -41,7 +41,7 @@ services:
     container_name: servicio_cliente
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -58,7 +58,7 @@ services:
     container_name: servicio_producto
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -75,7 +75,7 @@ services:
     container_name: servicio_manejo_de_datos
     environment: 
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -92,7 +92,7 @@ services:
     container_name: servicio_analisis
     environment: 
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
