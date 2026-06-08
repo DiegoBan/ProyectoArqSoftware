@@ -340,32 +340,8 @@ Actualiza el estado y datos faltantes de una venta o cotización según los dato
 {
 "accion": "act_cot",
 "COT": 12345,
-"facturas": [
-  {
-    "numero_factura": 11223,
-    "fecha": "2026-06-15",
-    "productos": [
-      {
-        "id_producto": 4,
-        "cantidad": 5
-      },
-      {
-        "id_producto": 10,
-        "cantidad": 1
-      }
-    ]
-  },
-  {
-    "numero_factura": 11224,
-    "fecha": "2026-06-15",
-    "productos" [
-      {
-        "id_producto": 10,
-        "cantidad": 1
-      }
-    ]
-  }
-]
+"numero_factura": 123456,
+"fecha_factura": "2026-06-13"
 }
 ```
 

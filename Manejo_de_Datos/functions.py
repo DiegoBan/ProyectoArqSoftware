@@ -79,29 +79,20 @@ def actualizar_cotizacion(db, datos_json):
             print(f"Actualizando cotizacion {datos_json['COT']} OCO a FACTURADO...")
             actualizar = """
                 UPDATE ventas
-                SET estado = 'FACTURADO'
+                SET estado = 'FACTURADO',
+                numero_factura = %s,
+                fecha_factura = %s,
+                estado_factura = 'PENDIENTE'
                 WHERE COT = %s;
             """
-            insertar_factura = """
-            INSERT INTO facturas (NFAC, id_venta, fecha_emision)
-            VALUES (%s, %s, %s);
-            """
-            insertar_factura_detalle = """
-            INSERT INTO factura_detalle (NFAC, id_producto, cantidad)
-            VALUES (%s, %s, %s);
-            """
-            db.execute(actualizar, (datos_json["COT"],))
+            db.execute(actualizar, (datos_json['numero_factura'], datos_json['fecha_factura'], datos_json['COT']))
             if db.rowcount != 1:
-                db.connection.rollback()
-                print(f"COT {datos_json['COT']} no encontrado.")
+                db.rollback()
+                print(f"COT {datos_json['COT']} no encontrado")
                 return json.dumps({
                     "estado": "error",
-                    "mensaje": "Error al encontrar cotización"
+                    "mensaje": "COT no encontrado correctamente"
                 })
-            for factura in datos_json["facturas"]:
-                db.execute(insertar_factura, (factura["numero_factura"], datos_json["COT"], factura["fecha"]))
-                for producto in factura["productos"]:
-                    db.execute(insertar_factura_detalle, (factura["numero_factura"], producto["id_producto"], producto["cantidad"]))
             db.connection.commit()
             print("Actualizado correctamente")
             return json.dumps({
