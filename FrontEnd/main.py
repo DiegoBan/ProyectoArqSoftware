@@ -2,7 +2,6 @@ import flet as ft
 import json
 from soa_lib import connect_to_bus, send_message, receive_message
 
-# Importar las vistas
 from vistas.crearuser import vista_crear_usuario
 from vistas.login import vista_login
 from vistas.home import vista_dashboard
@@ -14,6 +13,7 @@ from vistas.historial_ventas import vista_estado_cotizaciones
 from vistas.clientes import vista_clientes
 from vistas.empleados import vista_empleados
 
+
 def main(page: ft.Page):
     page.title = "Frontend - Proyecto Arquitectura de Software"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -23,123 +23,137 @@ def main(page: ft.Page):
     # 1. Conexión al Bus
     try:
         sock = connect_to_bus()
-        send_message(sock, "sinit", "front")  
-        print("Frontend conectado al bus como 'front'")
+        send_message(sock, "sinit", "front")
     except Exception as e:
         page.add(ft.Text(f"Error crítico conectando al bus: {e}", color=ft.Colors.RED))
         return
 
-    # 2. Función de Enrutamiento (Navegación)
+    # 2. Enrutamiento — LAZY: solo construye la vista solicitada.
+    # ANTES: el dict evaluaba TODAS las vistas al construirse, ejecutando los
+    # send_message de clientes/empleados/ventas aunque estuvieras en el login,
+    # llenando el buffer TCP con mensajes basura antes de autenticarse.
     def cambiar_vista(nombre_vista):
         page.controls.clear()
-
-        if nombre_vista == "login":
-            page.add(vista_login(page, sock)) 
-        elif nombre_vista == "crear_usuario":
-            page.add(vista_crear_usuario(page, sock, cambiar_vista))
-        elif nombre_vista == "dashboard":
-            page.add(vista_dashboard(page, sock, cambiar_vista))
-        elif nombre_vista == "productos":
-            page.add(vista_productos(page, sock, cambiar_vista))
-        elif nombre_vista == "confirmar_producto":
-            page.add(vista_confirmar_producto(page, sock, cambiar_vista))
-        elif nombre_vista == "ventas":
-            page.add(vista_dashboard_ventas(page, sock, cambiar_vista))
-        elif nombre_vista == "nueva_cotizacion":
-            page.add(vista_nueva_cotizacion(page, sock, cambiar_vista))
-        elif nombre_vista == "estado_cotizaciones":
-            page.add(vista_estado_cotizaciones(page, sock, cambiar_vista))
-        elif nombre_vista == "clientes":
-            page.add(vista_clientes(page, sock, cambiar_vista))
-        elif nombre_vista == "empleados":
-            page.add(vista_empleados(page, sock, cambiar_vista))
-
+        constructores = {
+            "login":               lambda: vista_login(page, sock),
+            "crear_usuario":       lambda: vista_crear_usuario(page, sock, cambiar_vista),
+            "dashboard":           lambda: vista_dashboard(page, sock, cambiar_vista),
+            "productos":           lambda: vista_productos(page, sock, cambiar_vista),
+            "confirmar_producto":  lambda: vista_confirmar_producto(page, sock, cambiar_vista),
+            "ventas":              lambda: vista_dashboard_ventas(page, sock, cambiar_vista),
+            "nueva_cotizacion":    lambda: vista_nueva_cotizacion(page, sock, cambiar_vista),
+            "estado_cotizaciones": lambda: vista_estado_cotizaciones(page, sock, cambiar_vista),
+            "clientes":            lambda: vista_clientes(page, sock, cambiar_vista),
+            "empleados":           lambda: vista_empleados(page, sock, cambiar_vista),
+        }
+        constructor = constructores.get(nombre_vista)
+        if constructor:
+            page.add(constructor())
         page.update()
 
-    # 3. Hilo de Escucha 
+    # Helper: mostrar snackbar y siempre rehabilitar la UI
+    def mostrar_snackbar(mensaje, color):
+        alerta = ft.SnackBar(ft.Text(mensaje), bgcolor=color)
+        page.overlay.append(alerta)
+        alerta.open = True
+        if page.controls:
+            page.controls[0].disabled = False
+        page.update()
+
+    # 3. Hilo de Escucha con buffer acumulador propio.
+    # PROBLEMA: soa_lib.receive_message usa recv() que no respeta límites de mensaje
+    # en TCP. Si el bus concatena varios mensajes en el buffer (como se ve en el log:
+    # <00031venta...00053usuar...00035clien...>), recv(5) puede leer a la mitad
+    # de un mensaje anterior y corromper el parse del JSON → pantalla pegada.
+    # SOLUCIÓN: acumular bytes aquí y extraer mensajes según el protocolo [5 longitud][N contenido].
     def escuchar_bus():
+        tcp_buffer = b''
+
+        def leer_exacto(n):
+            nonlocal tcp_buffer
+            while len(tcp_buffer) < n:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    raise ConnectionError("Bus cerró la conexión")
+                tcp_buffer += chunk
+            resultado = tcp_buffer[:n]
+            tcp_buffer = tcp_buffer[n:]
+            return resultado
+
         while True:
             try:
-                data = receive_message(sock)
-                if not data:
-                    print("El bus cerró la conexión.")
-                    break
-                
-                # Descartar los 5 caracteres de la cabecera ("clien")
+                raw_len = leer_exacto(5)
+                n = int(raw_len)
+                data = leer_exacto(n)
+
+                # Protocolo: [5 chars servicio destino][payload JSON]
                 mensaje_crudo = data[5:].decode()
-                
-                try:
-                    respuesta = json.loads(mensaje_crudo)
-                except json.JSONDecodeError:
-                    # Ignoramos mensajes puros del bus que no son JSON
-                    continue 
-                
+                respuesta = json.loads(mensaje_crudo)
+
                 if respuesta.get("estado") == "ok":
+
                     if "usuario" in respuesta:
-                        # --- 1. ES UNA RESPUESTA DE INICIO DE SESIÓN ---
+                        # Login exitoso
                         usuario = respuesta.get("usuario", {})
-                        page.session.store.set("rol", str(usuario.get("rol"))) 
-                        page.session.store.set("nombre", usuario.get("nombre"))
+                        page.session.store.set("rol", str(usuario.get("rol")))
                         page.session.store.set("rut", usuario.get("rut"))
-                        
-                        alerta_exito = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
-                        page.overlay.append(alerta_exito)
-                        alerta_exito.open = True
-                        
+                        page.session.store.set("nombre", usuario.get("nombre"))
                         cambiar_vista("dashboard")
-                    
+
+                    elif "usuarios" in respuesta:
+                        import vistas.empleados as ve
+                        ve.LISTA_EMPLEADOS = respuesta["usuarios"]
+                        cambiar_vista("empleados")
+
+                    elif "clientes" in respuesta:
+                        import vistas.clientes as vc
+                        vc.LISTA_CLIENTES = respuesta["clientes"]
+                        cambiar_vista("clientes")
+
                     else:
-                        # --- 2. ES OTRA OPERACIÓN (Ej: Crear Usuario) ---
-                        mensaje_exito = respuesta.get("mensaje", "Operación realizada con éxito")
-                        
-                        alerta_exito_op = ft.SnackBar(ft.Text(mensaje_exito), bgcolor=ft.Colors.GREEN_700)
-                        page.overlay.append(alerta_exito_op)
-                        alerta_exito_op.open = True
-                        
-                        # Desbloqueamos la pantalla para seguir trabajando
-                        if len(page.controls) > 0:
-                            page.controls[0].disabled = False
-                
+                        # El servicio responde {"estado":"ok","mensaje":"..."} SIN campo "accion".
+                        # Para saber qué refrescar usamos el request que enviamos, no la respuesta.
+                        # Como no tenemos acceso directo al request aquí, refrescamos ambas listas
+                        # de forma segura según qué vista está activa, o simplemente rehabilitamos
+                        # la UI y dejamos que el usuario navegue. Para acciones que sí devuelven
+                        # "accion" en la respuesta mantenemos el comportamiento anterior.
+                        accion_resp = respuesta.get("accion")
+                        if accion_resp == "actualizar_rol":
+                            send_message(sock, "usuar", json.dumps({
+                                "accion": "obtener_usuarios",
+                                "user_rut": page.session.store.get("rut")
+                            }))
+                        elif accion_resp in ("crear_cliente", "actualizar_cliente"):
+                            send_message(sock, "clien", json.dumps({
+                                "accion": "obtener_clientes",
+                                "user_rut": page.session.store.get("rut")
+                            }))
+                        else:
+                            # Respuesta genérica sin "accion": solo rehabilitar UI
+                            if page.controls:
+                                page.controls[0].disabled = False
+                        mostrar_snackbar(respuesta.get("mensaje", "Éxito"), ft.Colors.GREEN_700)
+
                 else:
-                    # --- 3. MANEJO DE ERRORES GENERAL EN PANTALLA ---
-                    error_msg = respuesta.get("mensaje", "Error en la operación")
-                    
-                    # Extraemos detalles extra si el backend los manda
-                    if "detalles" in respuesta:
-                        valores_detalles = list(respuesta.get("detalles").values())
-                        if valores_detalles:
-                            error_msg += f" ({valores_detalles[0]})"
-                            
-                    # NUEVA forma de mostrar el error rojo
-                    alerta_error = ft.SnackBar(ft.Text(error_msg), bgcolor=ft.Colors.RED_700)
-                    page.overlay.append(alerta_error)
-                    alerta_error.open = True
-                    
-                    # Desbloqueamos la pantalla para que el usuario pueda intentar de nuevo
-                    if len(page.controls) > 0:
-                        page.controls[0].disabled = False 
-                
-                page.update()
-                
-            except Exception as ex:
-                # 1. Mostrar en la terminal
-                print(f"Error procesando mensaje entrante: {ex}")
-                
-                # 2. Mostrar en la pantalla del usuario 
-                page.snack_bar = ft.SnackBar(ft.Text(f"Error crítico en el cliente: {ex}"), bgcolor=ft.Colors.RED_900)
-                page.snack_bar.open = True
-                
-                # 3. Desbloquear la pantalla por si se había quedado "pensando"
-                if len(page.controls) > 0:
+                    mostrar_snackbar(respuesta.get("mensaje", "Error desconocido"), ft.Colors.RED_700)
+
+            except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as ex:
+                print(f"[escuchar_bus] Error de parsing: {ex}")
+                if page.controls:
                     page.controls[0].disabled = False
                 page.update()
-                
+            except ConnectionError as ex:
+                print(f"[escuchar_bus] Conexión perdida: {ex}")
+                break
+            except Exception as ex:
+                print(f"[escuchar_bus] Error inesperado: {ex}")
+                if page.controls:
+                    page.controls[0].disabled = False
+                page.update()
 
-    # Iniciar el hilo escuchador
     page.run_thread(escuchar_bus)
-
-    # Arrancar la aplicación en la vista por defecto (Login)
     cambiar_vista("login")
+
 
 if __name__ == "__main__":
     ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8000, host="0.0.0.0")
