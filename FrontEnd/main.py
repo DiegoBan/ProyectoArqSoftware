@@ -2,7 +2,6 @@ import flet as ft
 import json
 from soa_lib import connect_to_bus, send_message, receive_message
 
-# Importar las vistas
 from vistas.crearuser import vista_crear_usuario
 from vistas.login import vista_login
 from vistas.home import vista_dashboard
@@ -13,6 +12,7 @@ from vistas.nueva_cotizacion import vista_nueva_cotizacion
 from vistas.historial_ventas import vista_estado_cotizaciones
 from vistas.clientes import vista_clientes
 from vistas.empleados import vista_empleados
+
 
 def main(page: ft.Page):
     page.title = "Frontend - Proyecto Arquitectura de Software"
@@ -33,7 +33,10 @@ def main(page: ft.Page):
         page.add(ft.Text(f"Error crítico conectando al bus: {e}", color=ft.Colors.RED))
         return
 
-    # 2. Función de Enrutamiento (Navegación)
+    # 2. Enrutamiento — LAZY: solo construye la vista solicitada.
+    # ANTES: el dict evaluaba TODAS las vistas al construirse, ejecutando los
+    # send_message de clientes/empleados/ventas aunque estuvieras en el login,
+    # llenando el buffer TCP con mensajes basura antes de autenticarse.
     def cambiar_vista(nombre_vista):
         page.controls.clear()
 
@@ -61,6 +64,7 @@ def main(page: ft.Page):
         page.update()
     # Arrancar la aplicación en la vista por defecto (Login)
     cambiar_vista("login")
+
 
 if __name__ == "__main__":
     ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8000, host="0.0.0.0")

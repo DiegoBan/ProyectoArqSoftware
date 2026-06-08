@@ -2,79 +2,89 @@ import flet as ft
 import json
 from soa_lib import send_message
 
+LISTA_EMPLEADOS = []
+
 def vista_empleados(page: ft.Page, sock, cambiar_vista_func):
-    
-    lbl_seleccionado = ft.Text("Seleccione un empleado para modificar su rol", size=14, color=ft.Colors.GREY_400)
-    rut_seleccionado = ""
-    
-    dropdown_nuevo_rol = ft.Dropdown(
+    global LISTA_EMPLEADOS
+
+    # FIX: usar lista mutable en lugar de string simple para que el closure lo capture bien
+    estado = {"rut_seleccionado": ""}
+
+    lbl_sel = ft.Text("Seleccione un empleado de la tabla", color=ft.Colors.GREY_400)
+    dropdown = ft.Dropdown(
         label="Nuevo Rol",
         width=200,
-        options=[
-            ft.dropdown.Option("admin"),
-            ft.dropdown.Option("vendedor"),
-            ft.dropdown.Option("bodeguero"),
-            ft.dropdown.Option("finanzas")
-        ]
+        options=[ft.dropdown.Option(r) for r in ["admin", "vendedor", "bodeguero", "finanzas"]]
     )
 
-    def btn_actualizar_rol_click(e):
-        if not rut_seleccionado or not dropdown_nuevo_rol.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Seleccione un empleado y un rol"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
+    def btn_actualizar_click(e):
+        if not estado["rut_seleccionado"]:
+            page.overlay.append(ft.SnackBar(ft.Text("Seleccione un empleado primero"), bgcolor=ft.Colors.ORANGE_700))
+            page.overlay[-1].open = True
             page.update()
             return
-            
-        payload = {
+        if not dropdown.value:
+            page.overlay.append(ft.SnackBar(ft.Text("Seleccione un rol"), bgcolor=ft.Colors.ORANGE_700))
+            page.overlay[-1].open = True
+            page.update()
+            return
+
+        send_message(sock, "usuar", json.dumps({
             "accion": "actualizar_rol",
-            "user_rut": page.session.store.get("rut"), # El admin que hace el cambio
-            "rut_empleado": rut_seleccionado,
-            "nuevo_rol": dropdown_nuevo_rol.value
-        }
-        send_message(sock, "usuar", json.dumps(payload))
-        # Opcional: mostrar mensaje de éxito y limpiar
-
-    btn_actualizar = ft.ElevatedButton("Asignar Nuevo Rol", on_click=btn_actualizar_rol_click, bgcolor=ft.Colors.BLUE_700)
-
-    # --- Tabla Visualización ---
-    def seleccionar_empleado(e):
-        # Simulación de selección
-        nonlocal rut_seleccionado
-        rut_seleccionado = "12.345.678-9" # Esto lo sacarías de la fila clickeada
-        lbl_seleccionado.value = f"Empleado seleccionado: Juan Pérez ({rut_seleccionado})"
+            "user_rut": page.session.store.get("rut"),
+            "rut_empleado": estado["rut_seleccionado"],
+            "nuevo_rol": dropdown.value
+        }))
+        # Deshabilitar la vista entera mientras espera respuesta del bus
+        if page.controls:
+            page.controls[0].disabled = True
         page.update()
 
-    tabla_empleados = ft.DataTable(
+    def seleccionar_empleado(rut, nombre):
+        # FIX: modificar el dict mutable, no una variable local
+        estado["rut_seleccionado"] = rut
+        lbl_sel.value = f"Empleado seleccionado: {nombre} ({rut})"
+        lbl_sel.color = ft.Colors.BLUE_300
+        page.update()
+
+    tabla = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("RUT")),
             ft.DataColumn(ft.Text("Nombre")),
-            ft.DataColumn(ft.Text("Rol Actual")),
+            ft.DataColumn(ft.Text("Rol")),
             ft.DataColumn(ft.Text("Acción")),
         ],
-        rows=[
-            # Datos de ejemplo
-            ft.DataRow(cells=[
-                ft.DataCell(ft.Text("12.345.678-9")),
-                ft.DataCell(ft.Text("Juan Pérez")),
-                ft.DataCell(ft.Text("vendedor")),
-                ft.DataCell(ft.TextButton("Seleccionar", on_click=seleccionar_empleado)),
-            ])
-        ]
+        rows=[]
     )
 
-    btn_volver = ft.TextButton("Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
+    for emp in LISTA_EMPLEADOS:
+        tabla.rows.append(ft.DataRow(cells=[
+            ft.DataCell(ft.Text(emp.get("rut", ""))),
+            ft.DataCell(ft.Text(emp.get("nombre", ""))),
+            ft.DataCell(ft.Text(emp.get("rol", ""))),
+            ft.DataCell(
+                ft.TextButton(
+                    "Seleccionar",
+                    # FIX: capturar valores en parámetros por defecto del lambda
+                    on_click=lambda e, r=emp.get("rut"), n=emp.get("nombre"): seleccionar_empleado(r, n)
+                )
+            )
+        ]))
+
+    if not LISTA_EMPLEADOS:
+        send_message(sock, "usuar", json.dumps({
+            "accion": "obtener_usuarios",
+            "user_rut": page.session.store.get("rut")
+        }))
 
     return ft.Container(
         content=ft.Column([
-            ft.Text("Gestión de Empleados y Roles", size=24, weight=ft.FontWeight.BOLD),
-            ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-            tabla_empleados,
-            ft.Divider(height=20, color=ft.Colors.GREY_700),
-            lbl_seleccionado,
-            ft.Row([dropdown_nuevo_rol, btn_actualizar], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-            btn_volver
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=20,
-        expand=True
+            ft.Text("Gestión de Empleados", size=24, weight="bold"),
+            tabla,
+            ft.Divider(),
+            lbl_sel,
+            ft.Row([dropdown, ft.ElevatedButton("Asignar Rol", on_click=btn_actualizar_click)]),
+            ft.TextButton("← Volver al Dashboard", on_click=lambda _: cambiar_vista_func("dashboard"))
+        ]),
+        padding=20
     )
