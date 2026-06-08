@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     COT NUMERIC(5, 0) PRIMARY KEY,
     id_cliente INT REFERENCES clientes(id) ON DELETE CASCADE,
     fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    estado VARCHAR(10) DEFAULT "COTIZADO",
+    estado VARCHAR(10) DEFAULT 'COTIZADO',
     fecha_cot DATE,
     orden_de_compra VARCHAR(12),
     fecha_oco DATE,
@@ -66,5 +66,5 @@ CREATE TABLE IF NOT EXISTS guia_detalle (
     numero_guia NUMERIC(4, 0) REFERENCES guia_despacho(numero_guia) ON DELETE CASCADE,
     id_producto INT REFERENCES productos(id) ON DELETE CASCADE,
     cantidad INT NOT NULL,
-    PRIMARY KEY (id_guia, id_producto)
+    PRIMARY KEY (numero_guia, id_producto)
 );
