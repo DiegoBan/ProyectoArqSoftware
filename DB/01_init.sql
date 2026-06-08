@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     COT NUMERIC(5, 0) PRIMARY KEY,
     id_cliente INT REFERENCES clientes(id) ON DELETE CASCADE,
     fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    estado VARCHAR(10) DEFAULT "COTIZADO",
+    estado VARCHAR(10) DEFAULT 'COTIZADO',
     fecha_cot DATE,
     orden_de_compra VARCHAR(12),
     fecha_oco DATE,

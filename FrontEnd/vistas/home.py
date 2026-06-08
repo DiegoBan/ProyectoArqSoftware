@@ -44,7 +44,20 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
         )
         controles_menu.append(btn_ventas)
         controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
-    # (Aquí a futuro agregaremos los botones de Inventario, Ventas, etc. según el rol)
+
+        # --- NUEVO Botón: Gestión de Empleados y Roles ---
+        btn_empleados = ft.Button("Administración: Gestión de Roles y Empleados", icon="manage_accounts", on_click=lambda _: cambiar_vista_func("empleados"),
+        width=350, height=45)
+        controles_menu.append(btn_empleados)
+        controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
+
+        # --- NUEVO Botón: Gestión de Carteras de Clientes ---
+        btn_clientes = ft.Button("Módulo: Carteras de Clientes", icon="groups", on_click=lambda _: cambiar_vista_func("clientes"),
+        width=350, height=45)
+
+        controles_menu.append(btn_clientes)
+        controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
+   
 
     # 4. Botón de Cerrar Sesión (Visible para todos)
     def btn_cerrar_sesion_click(e):

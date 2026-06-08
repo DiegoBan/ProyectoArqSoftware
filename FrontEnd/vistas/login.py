@@ -9,11 +9,12 @@ def vista_login(page: ft.Page, sock):
     txt_email = ft.TextField(label="Email", width=350)
     txt_password = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=350)
 
-    # --- Lógica del Botón ---
+# --- Lógica del Botón ---
     def btn_ingresar_click(e):
         if not txt_email.value or not txt_password.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Por favor, ingresa tu email y contraseña"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
+            alerta_vacio = ft.SnackBar(ft.Text("Por favor, ingresa tu email y contraseña"), bgcolor=ft.Colors.ORANGE_700)
+            page.overlay.append(alerta_vacio)
+            alerta_vacio.open = True
             page.update()
             return
 
@@ -31,8 +32,9 @@ def vista_login(page: ft.Page, sock):
         # Enviar al servicio
         send_message(sock, "usuar", json.dumps(payload))
         
-        # Desactivar temporalmente el botón para evitar spam
-        btn_ingresar.disabled = True
+        if len(page.controls) > 0:
+            page.controls[0].disabled = True
+        
         page.update()
 
     # --- Botón Único ---

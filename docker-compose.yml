@@ -103,3 +103,15 @@ services:
     depends_on:
       - bus
       - db
+
+  frontend:
+      build:
+        context: ./FrontEnd # Asegúrate de que esta sea la ruta a tu carpeta del front
+        dockerfile: Dockerfile
+      container_name: aplicacion_frontend
+      restart: unless-stopped
+      ports:
+        - "8000:8000"
+      depends_on:
+        - bus
+        - db

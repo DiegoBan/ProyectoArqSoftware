@@ -11,6 +11,8 @@ from vistas.confirmar_producto import vista_confirmar_producto
 from vistas.ventas import vista_dashboard_ventas
 from vistas.nueva_cotizacion import vista_nueva_cotizacion
 from vistas.historial_ventas import vista_estado_cotizaciones
+from vistas.clientes import vista_clientes
+from vistas.empleados import vista_empleados
 
 def main(page: ft.Page):
     page.title = "Frontend - Proyecto Arquitectura de Software"
@@ -21,7 +23,7 @@ def main(page: ft.Page):
     # 1. Conexión al Bus
     try:
         sock = connect_to_bus()
-        send_message(sock, "sinit", "front")  # Nos registramos como "front" en el bus
+        send_message(sock, "sinit", "front")  
         print("Frontend conectado al bus como 'front'")
     except Exception as e:
         page.add(ft.Text(f"Error crítico conectando al bus: {e}", color=ft.Colors.RED))
@@ -47,6 +49,10 @@ def main(page: ft.Page):
             page.add(vista_nueva_cotizacion(page, sock, cambiar_vista))
         elif nombre_vista == "estado_cotizaciones":
             page.add(vista_estado_cotizaciones(page, sock, cambiar_vista))
+        elif nombre_vista == "clientes":
+            page.add(vista_clientes(page, sock, cambiar_vista))
+        elif nombre_vista == "empleados":
+            page.add(vista_empleados(page, sock, cambiar_vista))
 
         page.update()
 
@@ -76,15 +82,19 @@ def main(page: ft.Page):
                         page.session.store.set("nombre", usuario.get("nombre"))
                         page.session.store.set("rut", usuario.get("rut"))
                         
-                        page.snack_bar = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
-                        page.snack_bar.open = True
+                        alerta_exito = ft.SnackBar(ft.Text("Acceso Concedido"), bgcolor=ft.Colors.GREEN_700)
+                        page.overlay.append(alerta_exito)
+                        alerta_exito.open = True
+                        
                         cambiar_vista("dashboard")
                     
                     else:
                         # --- 2. ES OTRA OPERACIÓN (Ej: Crear Usuario) ---
                         mensaje_exito = respuesta.get("mensaje", "Operación realizada con éxito")
-                        page.snack_bar = ft.SnackBar(ft.Text(mensaje_exito), bgcolor=ft.Colors.GREEN_700)
-                        page.snack_bar.open = True
+                        
+                        alerta_exito_op = ft.SnackBar(ft.Text(mensaje_exito), bgcolor=ft.Colors.GREEN_700)
+                        page.overlay.append(alerta_exito_op)
+                        alerta_exito_op.open = True
                         
                         # Desbloqueamos la pantalla para seguir trabajando
                         if len(page.controls) > 0:
@@ -94,17 +104,18 @@ def main(page: ft.Page):
                     # --- 3. MANEJO DE ERRORES GENERAL EN PANTALLA ---
                     error_msg = respuesta.get("mensaje", "Error en la operación")
                     
-                    # Extraemos detalles extra si el backend los manda (como en tu log)
+                    # Extraemos detalles extra si el backend los manda
                     if "detalles" in respuesta:
                         valores_detalles = list(respuesta.get("detalles").values())
                         if valores_detalles:
                             error_msg += f" ({valores_detalles[0]})"
                             
-                    # Mostramos el error en la barra inferior
-                    page.snack_bar = ft.SnackBar(ft.Text(error_msg), bgcolor=ft.Colors.RED_700)
-                    page.snack_bar.open = True
+                    # NUEVA forma de mostrar el error rojo
+                    alerta_error = ft.SnackBar(ft.Text(error_msg), bgcolor=ft.Colors.RED_700)
+                    page.overlay.append(alerta_error)
+                    alerta_error.open = True
                     
-                    # Desbloqueamos la pantalla sin cambiar de vista
+                    # Desbloqueamos la pantalla para que el usuario pueda intentar de nuevo
                     if len(page.controls) > 0:
                         page.controls[0].disabled = False 
                 
@@ -131,5 +142,4 @@ def main(page: ft.Page):
     cambiar_vista("login")
 
 if __name__ == "__main__":
-    # Recuerda ejecutar en terminal: LIBGL_ALWAYS_SOFTWARE=1 python main.py
-    ft.app(main)
+    ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8000, host="0.0.0.0")
