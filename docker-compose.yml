@@ -22,9 +22,10 @@ services:
   usuario:
     image: python:3.10-slim
     container_name: servicio_usuario
+    restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -39,9 +40,10 @@ services:
   cliente:
     image: python:3.10-slim
     container_name: servicio_cliente
+    restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -56,9 +58,10 @@ services:
   productos:
     image: python:3.10-slim
     container_name: servicio_producto
+    restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -73,9 +76,10 @@ services:
   manejo_de_datos:
     image: python:3.10-slim
     container_name: servicio_manejo_de_datos
+    restart: unless-stopped
     environment: 
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db
@@ -90,9 +94,10 @@ services:
   analisis:
     image: python:3.10-slim
     container_name: servicio_analisis
+    restart: unless-stopped
     environment: 
       - PYTHONUNBUFFERED=1
-      - DB:HOST=db
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=colocolo
       - DB_NAME=db

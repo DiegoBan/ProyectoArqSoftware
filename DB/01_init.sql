@@ -66,5 +66,5 @@ CREATE TABLE IF NOT EXISTS guia_detalle (
     numero_guia NUMERIC(4, 0) REFERENCES guia_despacho(numero_guia) ON DELETE CASCADE,
     id_producto INT REFERENCES productos(id) ON DELETE CASCADE,
     cantidad INT NOT NULL,
-    PRIMARY KEY (id_guia, id_producto)
+    PRIMARY KEY (numero_guia, id_producto)
 );

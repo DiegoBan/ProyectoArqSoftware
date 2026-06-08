@@ -1,5 +1,6 @@
 import json
 import os
+from decimal import Decimal
 import psycopg2
 from psycopg2 import Error
 
@@ -38,7 +39,18 @@ def obtener_clientes(db):
             print("Se han obtenido clientes")
             
             nombres_columnas = [columna[0] for columna in db.description]
-            clientes_formateados = [dict(zip(nombres_columnas, filas)) for filas in clientes]
+            clientes_formateados = []
+            
+            for fila in clientes:
+                # Unir columnas con valores
+                fila_dict = dict(zip(nombres_columnas, fila))
+                
+                # Buscar datos rebeldes (como el RUT) y convertirlos a tipos que JSON entienda
+                for clave, valor in fila_dict.items():
+                    if isinstance(valor, Decimal):
+                        fila_dict[clave] = int(valor) # Convertimos el Decimal a Entero
+                        
+                clientes_formateados.append(fila_dict)
             
             return json.dumps({
                 "estado": "ok",
