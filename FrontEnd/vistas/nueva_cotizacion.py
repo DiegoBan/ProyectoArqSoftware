@@ -23,32 +23,30 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
         clientes, productos = [], []
         
         try:
-            sock.settimeout(5.0) 
-            
             # --- PEDIR CLIENTES ---
             send_message(sock, "clien", json.dumps({"accion": "obtener_clientes"}))
-            # Usamos TU función para recibir y limpiar el mensaje
             resp_c_raw = receive_message(sock) 
             print(resp_c_raw)
             
+            # PRIMERO verificamos que haya llegado algo, LUEGO cortamos y decodificamos
             if resp_c_raw:
+                resp_c_limpio = resp_c_raw[5:].decode()
                 try:
-                    clientes = json.loads(resp_c_raw).get("clientes", [])
+                    clientes = json.loads(resp_c_limpio).get("clientes", [])
                 except json.JSONDecodeError:
-                    print(f"Error decodificando Clientes: {resp_c_raw}")
-                    
-            time.sleep(0.2) # Pequeña pausa por seguridad en la red
+                    print(f"Error decodificando Clientes: {resp_c_limpio}")
             
             # --- PEDIR PRODUCTOS ---
             send_message(sock, "produ", json.dumps({"accion": "obtener_productos"}))
-            # Usamos TU función de nuevo
             resp_p_raw = receive_message(sock) 
+            print(resp_p_raw)
             
             if resp_p_raw:
+                resp_p_limpio = resp_p_raw[5:].decode()
                 try:
-                    productos = json.loads(resp_p_raw).get("productos", [])
+                    productos = json.loads(resp_p_limpio).get("productos", [])
                 except json.JSONDecodeError:
-                    print(f"Error decodificando Productos: {resp_p_raw}")
+                    print(f"Error decodificando Productos: {resp_p_limpio}")
                 
         except Exception as e:
             print(f"Error al comunicar con el bus SOA: {e}")
@@ -81,12 +79,7 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
     # ---------------------------------------------------------
     # BOTÓN CREAR COTIZACIÓN
     # ---------------------------------------------------------
-    def crear_cotizacion_bloqueante(payload):
-        # También usamos receive_message aquí para atrapar la confirmación del bus
-        send_message(sock, "venta", json.dumps(payload))
-        return receive_message(sock)
-
-    async def btn_crear_cotizacion_click(e):
+    def btn_crear_cotizacion_click(e):
         if not txt_cot.value or not dropdown_cliente.value or not dropdown_producto.value or not txt_precio_final.value or not txt_cantidad.value:
             page.snack_bar = ft.SnackBar(ft.Text("Complete todos los campos"), bgcolor=ft.Colors.ORANGE_700)
             page.snack_bar.open = True
@@ -102,20 +95,33 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
         }
         
         try:
+            # Actualizamos la UI justo antes de bloquear el hilo principal
             btn_generar.text = "Guardando en BD..."
             btn_generar.disabled = True
             page.update()
 
-            respuesta_backend = await asyncio.to_thread(crear_cotizacion_bloqueante, payload)
-            print("El backend respondió:", respuesta_backend)
+            # --- LLAMADA SÍNCRONA AL BUS ---
+            sock.settimeout(5.0)
+            send_message(sock, "manej", json.dumps(payload))
+            respuesta_backend_raw = receive_message(sock)
+            sock.settimeout(None)
+
+            # Limpiamos la cabecera 'front' si es que llegó
+            if respuesta_backend_raw:
+                respuesta_backend = respuesta_backend_raw[5:].decode()
+                print("El backend respondió:", respuesta_backend)
             
             page.snack_bar = ft.SnackBar(ft.Text("Cotización generada exitosamente"), bgcolor=ft.Colors.GREEN_700)
             page.snack_bar.open = True
             cambiar_vista_func("ventas")
             
         except Exception as error:
+            # Si el socket falla (timeout o red), devolvemos el botón a la normalidad
+            sock.settimeout(None)
             btn_generar.text = "Generar Cotización"
             btn_generar.disabled = False
+            print(f"Error en creación: {error}")
+            
             page.snack_bar = ft.SnackBar(ft.Text("Error al guardar en la base de datos"), bgcolor=ft.Colors.RED_700)
             page.snack_bar.open = True
             page.update()

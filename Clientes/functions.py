@@ -52,6 +52,7 @@ def obtener_clientes(db):
                         
                 clientes_formateados.append(fila_dict)
             
+            print(clientes_formateados)
             return json.dumps({
                 "estado": "ok",
                 "mensaje": "Clientes obtenidos",

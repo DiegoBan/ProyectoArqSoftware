@@ -1,32 +1,15 @@
 import flet as ft
 import json
+import asyncio
 from datetime import datetime
-from soa_lib import send_message
+from soa_lib import send_message, receive_message
 
 def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
     
-    # 1. SOLICITAR LOS DATOS AL BACKEND AL CARGAR LA VISTA
-    lista_cotizaciones = []
-    try:
-        # Asumo que envías la acción sin un ID específico para que el backend traiga todas
-        payload_peticion = {"accion": "ver_detalles"}
-        
-        # En la mayoría de implementaciones SOA de este tipo, send_message retorna la respuesta del bus.
-        # Si tu librería requiere un sock.recv() extra, agrégalo aquí.
-        respuesta_raw = send_message(sock, "venta", json.dumps(payload_peticion)) 
-        
-        if respuesta_raw:
-            respuesta_json = json.loads(respuesta_raw)
-            if respuesta_json.get("estado") == "ok":
-                lista_cotizaciones = respuesta_json.get("detalles", [])
-    except Exception as e:
-        print(f"Error al cargar historial desde el bus: {e}")
-        # Puedes mostrar un SnackBar aquí si lo deseas para notificar el error de conexión.
-
     cotizacion_seleccionada = None
 
-    # Etiquetas del panel de detalles (ahora extendidas para mostrar TODA la info)
-    lbl_detalle_titulo = ft.Text("Seleccione una cotización de la lista de abajo para gestionarla", size=14, color=ft.Colors.GREY_400)
+    # --- UI: Etiquetas y Campos ---
+    lbl_detalle_titulo = ft.Text("Seleccione una cotización para gestionarla", size=14, color=ft.Colors.GREY_400)
     lbl_info_id = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
     lbl_info_cliente = ft.Text("")
     lbl_info_producto = ft.Text("")
@@ -38,84 +21,44 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
     lbl_info_estado = ft.Text("")
     
     txt_orden_compra = ft.TextField(label="Orden de Compra", visible=False, height=45, text_size=13)
-    txt_nota_venta = ft.TextField(label="Nota de Venta (Número)", visible=False, height=45, text_size=13, input_filter=ft.NumbersOnlyInputFilter())
+    txt_nota_venta = ft.TextField(label="Nota de Venta", visible=False, height=45, text_size=13, input_filter=ft.NumbersOnlyInputFilter())
     txt_num_factura = ft.TextField(label="N° Factura", visible=False, height=45, text_size=13, input_filter=ft.NumbersOnlyInputFilter())
 
     btn_actualizar = ft.ElevatedButton("Actualizar Estado", visible=False, bgcolor=ft.Colors.BLUE_700, width=200)
 
-    def procesar_cambio_estado(e):
-        nonlocal cotizacion_seleccionada
-        if not cotizacion_seleccionada:
-            return
-            
-        estado_actual = str(cotizacion_seleccionada.get("estado", "")).lower()
-        fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        
-        # ACTUALIZAR DE COTIZADO A OCO
-        if estado_actual == "cotizado":
-            if not txt_orden_compra.value or not txt_nota_venta.value:
-                page.snack_bar = ft.SnackBar(ft.Text("Debe ingresar la Orden de Compra y la Nota de Venta"), bgcolor=ft.Colors.RED_700)
-                page.snack_bar.open = True
-                page.update()
-                return
+    # --- CONTENEDOR DE LA TABLA ---
+    columna_tabla = ft.Column(spacing=0, expand=True, scroll=ft.ScrollMode.AUTO)
+    
+    cabecera_tabla = ft.Container(
+        content=ft.Row([
+            ft.Text("Acción", width=60, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
+            ft.Text("COT", width=60, weight=ft.FontWeight.BOLD),
+            ft.Text("Estado", width=90, weight=ft.FontWeight.BOLD),
+            ft.Text("Cliente", width=160, weight=ft.FontWeight.BOLD),
+            ft.Text("Cantidad / Producto", width=180, weight=ft.FontWeight.BOLD),
+            ft.Text("OC", width=90, weight=ft.FontWeight.BOLD),
+            ft.Text("Factura", width=70, weight=ft.FontWeight.BOLD),
+        ], alignment=ft.MainAxisAlignment.START),
+        padding=10,
+        bgcolor=ft.Colors.GREY_800,
+        border_radius=5
+    )
+    
+    columna_tabla.controls.append(cabecera_tabla)
+    columna_tabla.controls.append(ft.Text("⏳ Cargando historial desde el bus...", color=ft.Colors.YELLOW_700))
 
-            payload = {
-                "accion": "act_cot",
-                "COT": cotizacion_seleccionada["COT"],
-                "orden_de_compra": txt_orden_compra.value,
-                "fecha_oco": fecha_actual,
-                "nota_de_venta": int(txt_nota_venta.value)
-            }
-
-        # ACTUALIZAR DE OCO A FACTURADO
-        elif estado_actual == "oco":
-            if not txt_num_factura.value:
-                page.snack_bar = ft.SnackBar(ft.Text("Debe ingresar el Número de Factura"), bgcolor=ft.Colors.RED_700)
-                page.snack_bar.open = True
-                page.update()
-                return
-            
-            payload = {
-                "accion": "act_cot",
-                "COT": cotizacion_seleccionada["COT"],
-                "facturas": [
-                    {
-                        "numero_factura": int(txt_num_factura.value),
-                        "fecha": fecha_actual,
-                        "productos": [
-                            {
-                                "id_producto": cotizacion_seleccionada.get("id_producto", 1), # Asegúrate de que el backend envíe el id_producto también
-                                "cantidad": cotizacion_seleccionada.get("cantidad", 0)
-                            }
-                        ]
-                    }
-                ]
-            }
-
-        # Enviar actualización al bus SOA
-        send_message(sock, "venta", json.dumps(payload))
-        page.snack_bar = ft.SnackBar(ft.Text(f"¡Cotización {cotizacion_seleccionada['COT']} actualizada exitosamente!"), bgcolor=ft.Colors.GREEN_700)
-        page.snack_bar.open = True
-        
-        # Refrescar la vista para volver a cargar los datos desde la BD
-        cambiar_vista_func("estado_cotizaciones")
-
-    btn_actualizar.on_click = procesar_cambio_estado
-
+    # --- LÓGICA DE INTERACCIÓN ---
     def fila_seleccionada(cot):
         nonlocal cotizacion_seleccionada
         cotizacion_seleccionada = cot
         
-        # Función auxiliar para manejar los nulls de la base de datos
         def seguro(valor, sufijo="", prefijo=""):
             return f"{prefijo}{valor}{sufijo}" if valor is not None else "N/A"
 
-        # Cálculo del total
         cantidad = cot.get('cantidad', 0)
         precio = cot.get('precio_unitario', 0)
         total = cantidad * precio
 
-        # Llenado de toda la información en el panel
         lbl_detalle_titulo.value = "Detalles del Documento Seleccionado:"
         lbl_info_id.value = f"COT: {cot.get('COT', 'ERROR')}"
         lbl_info_cliente.value = f"Cliente: {cot.get('nombre_cliente', 'N/A')}"
@@ -129,7 +72,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         estado = str(cot.get('estado', '')).lower()
         lbl_info_estado.value = f"Estado Actual: {estado.upper()}"
         
-        # Lógica visual de inputs
         txt_orden_compra.visible = False
         txt_nota_venta.visible = False
         txt_num_factura.visible = False
@@ -147,87 +89,160 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             
         page.update()
 
-    cabecera_tabla = ft.Container(
-        content=ft.Row([
-            ft.Text("Acción", width=60, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
-            ft.Text("COT", width=60, weight=ft.FontWeight.BOLD),
-            ft.Text("Estado", width=90, weight=ft.FontWeight.BOLD),
-            ft.Text("Cliente", width=160, weight=ft.FontWeight.BOLD),
-            ft.Text("Cantidad / Producto", width=180, weight=ft.FontWeight.BOLD),
-            ft.Text("OC", width=90, weight=ft.FontWeight.BOLD),
-            ft.Text("Factura", width=70, weight=ft.FontWeight.BOLD),
-        ], alignment=ft.MainAxisAlignment.START),
-        padding=10,
-        bgcolor=ft.Colors.GREY_800,
-        border_radius=5
-    )
+    def procesar_cambio_estado(e):
+        nonlocal cotizacion_seleccionada
+        if not cotizacion_seleccionada:
+            return
+            
+        estado_actual = str(cotizacion_seleccionada.get("estado", "")).lower()
+        fecha_actual = datetime.now().strftime("%Y-%m-%d")
+        
+        if estado_actual == "cotizado":
+            if not txt_orden_compra.value or not txt_nota_venta.value:
+                page.snack_bar = ft.SnackBar(ft.Text("Debe ingresar la Orden de Compra y la Nota de Venta"), bgcolor=ft.Colors.RED_700)
+                page.snack_bar.open = True
+                page.update()
+                return
 
-    lista_filas_controles = [cabecera_tabla]
+            payload = {
+                "accion": "act_cot",
+                "COT": cotizacion_seleccionada["COT"],
+                "orden_de_compra": txt_orden_compra.value,
+                "fecha_oco": fecha_actual,
+                "nota_de_venta": int(txt_nota_venta.value)
+            }
 
-    # 2. DIBUJAR LAS FILAS CON LOS DATOS REALES DEL BACKEND
-    for cot in lista_cotizaciones:
-        def crear_evento_click(c=cot):
-            return lambda _: fila_seleccionada(c)
+        elif estado_actual == "oco":
+            if not txt_num_factura.value:
+                page.snack_bar = ft.SnackBar(ft.Text("Debe ingresar el Número de Factura"), bgcolor=ft.Colors.RED_700)
+                page.snack_bar.open = True
+                page.update()
+                return
+            
+            payload = {
+                "accion": "act_cot",
+                "COT": cotizacion_seleccionada["COT"],
+                "facturas": [{
+                    "numero_factura": int(txt_num_factura.value),
+                    "fecha": fecha_actual,
+                    "productos": [{
+                        "id_producto": cotizacion_seleccionada.get("id_producto", 1), 
+                        "cantidad": cotizacion_seleccionada.get("cantidad", 0)
+                    }]
+                }]
+            }
 
-        estado = str(cot.get("estado", "")).lower()
-        color_estado = ft.Colors.BLUE_400 if estado == "cotizado" else ft.Colors.ORANGE_400 if estado == "oco" else ft.Colors.GREEN_400
+        try:
+            # Enviamos y consumimos la respuesta del bus respetando la regla [5:]
+            sock.settimeout(5.0)
+            send_message(sock, "manej", json.dumps(payload))
+            respuesta_cruda = receive_message(sock)
+            sock.settimeout(None)
+            
+            if respuesta_cruda:
+                resp_limpia = respuesta_cruda[5:].decode()
+                print(f"Backend respondió a actualización: {resp_limpia}")
+            
+            page.snack_bar = ft.SnackBar(ft.Text(f"¡Cotización {cotizacion_seleccionada['COT']} actualizada!"), bgcolor=ft.Colors.GREEN_700)
+            page.snack_bar.open = True
+            
+            # Recargamos la vista entera
+            cambiar_vista_func("estado_cotizaciones")
+            
+        except Exception as ex:
+            sock.settimeout(None)
+            print(f"Error actualizando estado: {ex}")
+            page.snack_bar = ft.SnackBar(ft.Text("Error de red al actualizar"), bgcolor=ft.Colors.RED_700)
+            page.snack_bar.open = True
+            page.update()
 
-        # Manejo de nulls para la tabla
-        oc_str = str(cot.get("orden_de_compra")) if cot.get("orden_de_compra") is not None else "-"
-        fac_str = str(cot.get("numero_factura")) if cot.get("numero_factura") is not None else "-"
+    btn_actualizar.on_click = procesar_cambio_estado
 
-        fila_renderizada = ft.Container(
-            content=ft.Row([
-                ft.TextButton("Ver", width=60, on_click=crear_evento_click()),
-                ft.Text(str(cot.get("COT", "N/A")), width=60),
-                ft.Text(estado.upper(), width=90, weight=ft.FontWeight.BOLD, color=color_estado),
-                ft.Text(str(cot.get("nombre_cliente", "N/A"))[:15], width=160), # Cortamos texto largo
-                ft.Text(f"{cot.get('cantidad', 0)}x {str(cot.get('nombre', 'N/A'))[:15]}", width=180),
-                ft.Text(oc_str, width=90),
-                ft.Text(fac_str, width=70),
-            ], alignment=ft.MainAxisAlignment.START),
-            padding=5,
-            border=ft.Border(bottom=ft.BorderSide(1, ft.Colors.GREY_800))
-        )
-        lista_filas_controles.append(fila_renderizada)
+    # --- LÓGICA DE CARGA ASÍNCRONA (Con la regla [5:]) ---
+    def pedir_historial_bloqueante():
+        lista_cot = []
+        try:
+            sock.settimeout(5.0)
+            send_message(sock, "manej", json.dumps({"accion": "ver_detalles"})) 
+            respuesta_raw = receive_message(sock)
+            print(respuesta_raw)
+            
+            if respuesta_raw:
+                texto_limpio = respuesta_raw[5:].decode()
+                try:
+                    respuesta_json = json.loads(texto_limpio)
+                    if respuesta_json.get("estado") == "ok":
+                        lista_cot = respuesta_json.get("detalles", [])
+                except json.JSONDecodeError:
+                    print(f"Error decodificando historial: {texto_limpio}")
+                    
+        except Exception as e:
+            print(f"Error al cargar historial desde el bus: {e}")
+        finally:
+            sock.settimeout(None)
+        return lista_cot
 
+    async def cargar_tabla_async():
+        datos_historial = await asyncio.to_thread(pedir_historial_bloqueante)
+        
+        columna_tabla.controls.clear()
+        columna_tabla.controls.append(cabecera_tabla)
+        
+        if not datos_historial:
+            columna_tabla.controls.append(ft.Text("No hay cotizaciones registradas o hubo un error.", color=ft.Colors.RED_400, italic=True))
+        else:
+            for cot in datos_historial:
+                def crear_evento_click(c=cot):
+                    return lambda _: fila_seleccionada(c)
+
+                estado = str(cot.get("estado", "")).lower()
+                color_estado = ft.Colors.BLUE_400 if estado == "cotizado" else ft.Colors.ORANGE_400 if estado == "oco" else ft.Colors.GREEN_400
+
+                oc_str = str(cot.get("orden_de_compra")) if cot.get("orden_de_compra") is not None else "-"
+                fac_str = str(cot.get("numero_factura")) if cot.get("numero_factura") is not None else "-"
+
+                fila_renderizada = ft.Container(
+                    content=ft.Row([
+                        ft.TextButton("Ver", width=60, on_click=crear_evento_click()),
+                        ft.Text(str(cot.get("COT", "N/A")), width=60),
+                        ft.Text(estado.upper(), width=90, weight=ft.FontWeight.BOLD, color=color_estado),
+                        ft.Text(str(cot.get("nombre_cliente", "N/A"))[:15], width=160),
+                        ft.Text(f"{cot.get('cantidad', 0)}x {str(cot.get('nombre', 'N/A'))[:15]}", width=180),
+                        ft.Text(oc_str, width=90),
+                        ft.Text(fac_str, width=70),
+                    ], alignment=ft.MainAxisAlignment.START),
+                    padding=5,
+                    border=ft.Border(bottom=ft.BorderSide(1, ft.Colors.GREY_800))
+                )
+                columna_tabla.controls.append(fila_renderizada)
+                
+        page.update()
+
+    # --- UI: Paneles Principales ---
     panel_detalles = ft.Container(
         content=ft.Column([
-            lbl_detalle_titulo,
-            lbl_info_id,
-            lbl_info_cliente,
-            lbl_info_producto,
-            lbl_info_total,
+            lbl_detalle_titulo, lbl_info_id, lbl_info_cliente, lbl_info_producto, lbl_info_total,
             ft.Divider(height=10, color=ft.Colors.GREY_700),
-            lbl_info_fechas,
-            lbl_info_oco,
-            lbl_info_factura,
-            lbl_info_guia,
+            lbl_info_fechas, lbl_info_oco, lbl_info_factura, lbl_info_guia,
             ft.Divider(height=10, color=ft.Colors.GREY_700),
             lbl_info_estado
         ], spacing=5, tight=True),
-        padding=15,
-        bgcolor=ft.Colors.GREY_900,
-        border_radius=8,
-        width=450 # Amplié el panel para que quepa toda la información
+        padding=15, bgcolor=ft.Colors.GREY_900, border_radius=8, width=450
     )
 
     panel_acciones = ft.Container(
         content=ft.Column([
             ft.Text("Datos Requeridos", size=14, color=ft.Colors.GREY_400),
             ft.Divider(height=10, color=ft.Colors.GREY_700),
-            txt_orden_compra,
-            txt_nota_venta,
-            txt_num_factura,
-            btn_actualizar
+            txt_orden_compra, txt_nota_venta, txt_num_factura, btn_actualizar
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=15,
-        bgcolor=ft.Colors.GREY_900,
-        border_radius=8,
-        width=260
+        padding=15, bgcolor=ft.Colors.GREY_900, border_radius=8, width=260
     )
 
     btn_volver = ft.TextButton("Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
+
+    # Disparamos la carga asíncrona al final
+    page.run_task(cargar_tabla_async)
 
     return ft.Container(
         content=ft.Column([
@@ -236,10 +251,9 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             ft.Row([panel_detalles, panel_acciones], alignment=ft.MainAxisAlignment.CENTER, spacing=20, vertical_alignment=ft.CrossAxisAlignment.START),
             ft.Divider(height=20, color=ft.Colors.GREY_800),
             ft.Text("Historial de Documentos Registrados:", size=12, color=ft.Colors.GREY_400),
-            ft.Column(controls=lista_filas_controles, spacing=0, expand=True, scroll=ft.ScrollMode.AUTO),
+            columna_tabla,
             ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
             btn_volver
         ], alignment=ft.MainAxisAlignment.START, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=15,
-        expand=True
+        padding=15, expand=True
     )

@@ -18,18 +18,24 @@ Para levantar el proyecto se utiliza el siguiente comando en la carpeta principa
 docker compose up --build -d
 ```
 
+### Visualizar el proyecto
+Para poder visualizar el proyecto se tiene que tener libre el puerto 8000 de la maquina, en caso contrario leer la sección de FrontEnd. Ingresar a:
+``` localhost:8000```
+
 ## Cliente
 
-### Librerias FrontEnd
-usar el comando 
-```
-pip install -r requirements.txt
-```
-Luego para iniciar el front se debe ejecutar primero el dockerfile del backend, el cual se encuentra en la carpeta raiz del proyecto. Luego ir a la carpeta "FrontEnd" y copiar el siguiente comando.
-```
-python main.py
-```
-De esa forma se usa ejecutaran las vistas de la aplicación 
+### FrontEnd — Detalles técnicos
+- **Lenguaje:** Python
+- **UI / Framework:** Flet (ver `FrontEnd/requirements.txt` para versiones específicas)
+- **Dependencias:** Se instalan desde la carpeta `FrontEnd`.
+- **Punto de entrada:** `FrontEnd/main.py` — arranca una app Flet y expone la interfaz web en `0.0.0.0:8000` por defecto (configurable en `main.py`).
+
+- **Vistas:** Las pantallas están en `FrontEnd/vistas/` (ej.: `login.py`, `productos.py`, `nueva_cotizacion.py`, `clientes.py`, `ventas.py`) y son montadas dinámicamente por `main.py` mediante la función `cambiar_vista`.
+- **Comunicación con la arquitectura SOA:** El frontend se comunica con el Bus SOA usando `FrontEnd/soa_lib.py` (sockets). Envía y recibe payloads JSON con acciones (por ejemplo `iniciar_sesion`, `obtener_productos`, `crear_cot`, etc.).
+- **Sesión y estado:** Se utilizan `page.session.store` para persistir valores en sesión (ej. `rol`, `nombre`, `rut`) y `SnackBar`/controles de Flet para feedback del usuario.
+- **Puerto por defecto:** `8000` (modificar en `ft.app()` si necesita otro puerto).
+
+De esta forma se ejecutarán y mostrarán las vistas de la aplicación FrontEnd.
 
 ## Servicios
 
