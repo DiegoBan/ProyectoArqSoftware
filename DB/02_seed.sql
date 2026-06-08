@@ -9,3 +9,5 @@ VALUES (
     '+56900000000', 
     '1990-01-01'
 );
+INSERT INTO clientes (nombre, rut_empresa) 
+VALUES ('Blanco y Negro S.A.', 99999999);

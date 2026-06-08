@@ -1,170 +1,144 @@
 import flet as ft
 import json
+import asyncio
 from datetime import datetime
-from soa_lib import send_message
-from vistas.historial_ventas import HISTORIAL_COTIZACIONES
+from soa_lib import send_message, receive_message # <--- ¡IMPORTANTE: Agrega receive_message aquí!
 
 def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
-    global HISTORIAL_COTIZACIONES
     
-    PRODUCTOS_STOCK = {
-        "Laptop HP": {"stock": 12, "precio_base": 750000},
-        "Monitor Samsung 24\"": {"stock": 5, "precio_base": 130000},
-        "Teclado Mecánico": {"stock": 0, "precio_base": 45000},
-        "Mouse Ergonómico": {"stock": 25, "precio_base": 25000}
-    }
-    
-    CLIENTES_REGISTRADOS = [
-        "Inversiones Alfa S.A.",
-        "Juan Pérez Distribuidora",
-        "Clínica Santa María",
-        "Particular - María Pinto"
-    ]
+    txt_cot = ft.TextField(label="Número de Cotización (COT)", width=350)
+    txt_cantidad = ft.TextField(label="Cantidad", width=150, value="1")
+    txt_precio_final = ft.TextField(label="Precio Unit. ($)", width=180)
+    txt_fecha = ft.TextField(label="Fecha de Emisión", value=datetime.now().strftime("%Y-%m-%d"), width=350, disabled=True)
 
-    dropdown_cliente = ft.Dropdown(
-        label="Seleccionar Cliente",
-        width=350,
-        options=[ft.dropdown.Option(cliente) for cliente in CLIENTES_REGISTRADOS]
-    )
+    dropdown_cliente = ft.Dropdown(label="⏳ Cargando clientes desde el bus...", width=350, disabled=True)
+    dropdown_producto = ft.Dropdown(label="⏳ Cargando productos desde el bus...", width=350, disabled=True)
+    btn_generar = ft.ElevatedButton("Generar Cotización", width=350, height=45, bgcolor=ft.Colors.GREY_700, disabled=True)
 
-    dropdown_producto = ft.Dropdown(
-        label="Seleccionar Producto",
-        width=350,
-        options=[ft.dropdown.Option(prod) for prod in PRODUCTOS_STOCK.keys()]
-    )
-
-    txt_cantidad = ft.TextField(
-        label="Cantidad", 
-        width=150, 
-        value="1",
-        keyboard_type=ft.KeyboardType.NUMBER,
-        input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
-    )
-
-    txt_precio_final = ft.TextField(
-        label="Precio Unitario Final ($)", 
-        width=180,
-        keyboard_type=ft.KeyboardType.NUMBER,
-        input_filter=ft.InputFilter(allow=True, regex_string=r"^[0-9]*$", replacement_string="")
-    )
-
-    lbl_status_stock = ft.Text("", size=14, weight=ft.FontWeight.W_500)
-    
-    fecha_hoy = datetime.now().strftime("%Y-%m-%d")
-    txt_fecha = ft.TextField(label="Fecha de Emisión", value=fecha_hoy, width=350, disabled=True)
-
-    def verificar_disponibilidad(e):
-        prod_seleccionado = dropdown_producto.value
-        cant_solicitada = txt_cantidad.value
-
-        if not prod_seleccionado or not cant_solicitada:
-            return
-
-        cant_solicitada = int(cant_solicitada) if cant_solicitada else 0
-        stock_actual = PRODUCTOS_STOCK[prod_seleccionado]["stock"]
-        precio_sugerido = PRODUCTOS_STOCK[prod_seleccionado]["precio_base"]
-
-        if e.control == dropdown_producto:
-            txt_precio_final.value = str(precio_sugerido)
-
-        if stock_actual == 0:
-            lbl_status_stock.value = "SIN STOCK DISPONIBLE"
-            lbl_status_stock.color = ft.Colors.RED_400
-        elif cant_solicitada > stock_actual:
-            lbl_status_stock.value = f"Stock insuficiente (Quedan {stock_actual} un.)"
-            lbl_status_stock.color = ft.Colors.ORANGE_400
-        else:
-            lbl_status_stock.value = f"Stock disponible ({stock_actual} un.)"
-            lbl_status_stock.color = ft.Colors.GREEN_400
-        page.update()
-
-    dropdown_producto.on_change = verificar_disponibilidad
-    txt_cantidad.on_change = verificar_disponibilidad
-
-    def btn_crear_cotizacion_click(e):
-        if not dropdown_cliente.value or not dropdown_producto.value or not txt_precio_final.value or not txt_cantidad.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Por favor, complete todos los campos"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
-            page.update()
-            return
-
-        prod = dropdown_producto.value
-        cant = int(txt_cantidad.value)
+    # ---------------------------------------------------------
+    # LA FUNCIÓN CORREGIDA USANDO TU PROTOCOLO SOA
+    # ---------------------------------------------------------
+    def pedir_datos_bloqueantes():
+        import time
+        clientes, productos = [], []
         
-        if cant > PRODUCTOS_STOCK[prod]["stock"]:
-            page.snack_bar = ft.SnackBar(ft.Text("Cantidad superior al stock real"), bgcolor=ft.Colors.RED_700)
+        try:
+            sock.settimeout(5.0) 
+            
+            # --- PEDIR CLIENTES ---
+            send_message(sock, "clien", json.dumps({"accion": "obtener_clientes"}))
+            # Usamos TU función para recibir y limpiar el mensaje
+            resp_c_raw = receive_message(sock) 
+            print(resp_c_raw)
+            
+            if resp_c_raw:
+                try:
+                    clientes = json.loads(resp_c_raw).get("clientes", [])
+                except json.JSONDecodeError:
+                    print(f"Error decodificando Clientes: {resp_c_raw}")
+                    
+            time.sleep(0.2) # Pequeña pausa por seguridad en la red
+            
+            # --- PEDIR PRODUCTOS ---
+            send_message(sock, "produ", json.dumps({"accion": "obtener_productos"}))
+            # Usamos TU función de nuevo
+            resp_p_raw = receive_message(sock) 
+            
+            if resp_p_raw:
+                try:
+                    productos = json.loads(resp_p_raw).get("productos", [])
+                except json.JSONDecodeError:
+                    print(f"Error decodificando Productos: {resp_p_raw}")
+                
+        except Exception as e:
+            print(f"Error al comunicar con el bus SOA: {e}")
+        finally:
+            sock.settimeout(None)
+            
+        return clientes, productos
+
+    async def cargar_datos_async():
+        datos_clientes, datos_productos = await asyncio.to_thread(pedir_datos_bloqueantes)
+        
+        if datos_clientes:
+            dropdown_cliente.options = [ft.dropdown.Option(key=str(c["id"]), text=c["nombre"]) for c in datos_clientes]
+            dropdown_cliente.label = "Seleccionar Cliente"
+            dropdown_cliente.disabled = False
+        else:
+            dropdown_cliente.label = "⚠ Error al cargar clientes"
+
+        if datos_productos:
+            dropdown_producto.options = [ft.dropdown.Option(key=str(p["id"]), text=p["nombre"]) for p in datos_productos]
+            dropdown_producto.label = "Seleccionar Producto"
+            dropdown_producto.disabled = False
+            
+        if datos_clientes and datos_productos:
+            btn_generar.disabled = False 
+            btn_generar.bgcolor = ft.Colors.BLUE_700
+
+        page.update() 
+
+    # ---------------------------------------------------------
+    # BOTÓN CREAR COTIZACIÓN
+    # ---------------------------------------------------------
+    def crear_cotizacion_bloqueante(payload):
+        # También usamos receive_message aquí para atrapar la confirmación del bus
+        send_message(sock, "venta", json.dumps(payload))
+        return receive_message(sock)
+
+    async def btn_crear_cotizacion_click(e):
+        if not txt_cot.value or not dropdown_cliente.value or not dropdown_producto.value or not txt_precio_final.value or not txt_cantidad.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Complete todos los campos"), bgcolor=ft.Colors.ORANGE_700)
             page.snack_bar.open = True
             page.update()
             return
-
-        nuevo_id = f"COT-0{len(HISTORIAL_COTIZACIONES) + 1:02d}"
-        calculo_total = cant * int(txt_precio_final.value)
-
-        nueva_cot = {
-            "id": nuevo_id,
-            "cliente": dropdown_cliente.value,
-            "producto": prod,
-            "cantidad": cant,
-            "precio_total": calculo_total,
-            "fecha": txt_fecha.value,
-            "estado": "cotizado",
-            "fecha_oco": "-"
-        }
-        HISTORIAL_COTIZACIONES.append(nueva_cot)
-
-        rut_vendedor_actual = page.session.store.get("rut")
 
         payload = {
-            "accion": "crear_cotizacion",
-            "user": rut_vendedor_actual,
-            "id": nuevo_id,
-            "cliente": dropdown_cliente.value,
-            "producto": prod,
-            "cantidad": cant,
-            "precio_total": calculo_total,
-            "fecha": txt_fecha.value
+            "accion": "crear_cot",
+            "COT": int(txt_cot.value),
+            "id_cliente": int(dropdown_cliente.value),
+            "fecha_cot": txt_fecha.value,
+            "productos": [{"id_producto": int(dropdown_producto.value), "cantidad": int(txt_cantidad.value), "precio_unitario": int(txt_precio_final.value)}]
         }
-        send_message(sock, "venta", json.dumps(payload))
-
-        page.snack_bar = ft.SnackBar(ft.Text("Cotización generada exitosamente"), bgcolor=ft.Colors.GREEN_700)
-        page.snack_bar.open = True
         
-        dropdown_cliente.value = None
-        dropdown_producto.value = None
-        txt_cantidad.value = "1"
-        txt_precio_final.value = ""
-        lbl_status_stock.value = ""
-        
-        cambiar_vista_func("ventas")
+        try:
+            btn_generar.text = "Guardando en BD..."
+            btn_generar.disabled = True
+            page.update()
 
-    btn_generar = ft.Button("Generar Cotización", on_click=btn_crear_cotizacion_click, width=350, height=45)
+            respuesta_backend = await asyncio.to_thread(crear_cotizacion_bloqueante, payload)
+            print("El backend respondió:", respuesta_backend)
+            
+            page.snack_bar = ft.SnackBar(ft.Text("Cotización generada exitosamente"), bgcolor=ft.Colors.GREEN_700)
+            page.snack_bar.open = True
+            cambiar_vista_func("ventas")
+            
+        except Exception as error:
+            btn_generar.text = "Generar Cotización"
+            btn_generar.disabled = False
+            page.snack_bar = ft.SnackBar(ft.Text("Error al guardar en la base de datos"), bgcolor=ft.Colors.RED_700)
+            page.snack_bar.open = True
+            page.update()
+
+    btn_generar.on_click = btn_crear_cotizacion_click
     btn_volver = ft.TextButton("Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
 
+    # ---------------------------------------------------------
+    # RENDERIZADO VISUAL
+    # ---------------------------------------------------------
     recuadro_cotizacion = ft.Column(
         controls=[
             ft.Text("Nueva Cotización", size=26, weight=ft.FontWeight.BOLD),
-            ft.Text("Módulo de Ventas e Inventario", size=14, color=ft.Colors.GREY_400),
             ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            txt_fecha,
-            dropdown_cliente,
-            dropdown_producto,
-            ft.Row(
-                controls=[txt_cantidad, txt_precio_final],
-                alignment=ft.MainAxisAlignment.CENTER,
-                width=350
-            ),
-            lbl_status_stock,
+            txt_fecha, txt_cot, dropdown_cliente, dropdown_producto,
+            ft.Row([txt_cantidad, txt_precio_final], alignment=ft.MainAxisAlignment.CENTER, width=350),
             ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            btn_generar,
-            btn_volver
+            btn_generar, btn_volver
         ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        scroll=ft.ScrollMode.AUTO
     )
 
-    return ft.Container(
-        content=recuadro_cotizacion,
-        alignment=ft.Alignment.CENTER,
-        expand=True,
-        padding=20
-    )
+    page.run_task(cargar_datos_async)
+
+    return ft.Container(content=recuadro_cotizacion, alignment=ft.Alignment.CENTER, expand=True, padding=20)

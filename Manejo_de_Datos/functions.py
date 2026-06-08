@@ -116,10 +116,10 @@ def actualizar_cotizacion(db, datos_json):
             "mensaje": "Error interno del servidor"
         })
         
-def ver_detalles(db, datos_json):
-    print("<-- Ver detalles de cotizacion --->")
+def ver_detalles(db):
+    print("<-- Ver detalles de todas las cotizaciones --->")
     query = """
-        SELECT fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia
+        SELECT COT fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia
         FROM ventas
         JOIN clientes ON ventas.id_cliente = clientes.id
         JOIN venta_detalle ON ventas.COT = venta_detalle.id_venta
@@ -127,18 +127,33 @@ def ver_detalles(db, datos_json):
         LEFT JOIN guia_despacho ON guia_despacho.id_venta = ventas.COT
         LEFT JOIN guia_detalle ON guia_detalle.numero_guia = guia_despacho.numero_guia 
             AND guia_detalle.id_producto = venta_detalle.id_producto
-        WHERE ventas.COT = %s;
+        ORDER BY ventas.COT DESC;
     """
     try:
-        db.execute(query, datos_json["numero_cotizacion"])
-        resultado = db.fetchall()
-        print("Se obtuvieron bien los resultados:", resultado)
-        return resultado
+        db.execute(query)
+        filas = db.fetchall()
+        
+        columnas = [desc[0] for desc in db.description]
+        
+        detalles_formateados = []
+        for fila in filas:
+            fila_dict = dict(zip(columnas, fila))
+            
+            for clave, valor in fila_dict.items():
+                if hasattr(valor, 'isoformat'):
+                    fila_dict[clave] = valor.isoformat()
+            detalles_formateados.append(fila_dict)
+        print("Se obtuvieron bien los resultados:", len(detalles_formateados), "filas")
+        
+        return json.dumps({
+            "estado": "ok",
+            "mensaje": "Detalles de cotizaciones obtenidos",
+            "detalles": detalles_formateados
+        })
+        
     except Exception as e:
-        print("Error al obtener detalle de venta")
+        print(f"Error al obtener detalle de venta: {e}")
         return json.dumps({
             "estado": "error",
             "mensaje": "Error interno del servidor"
         })
-        
-    
