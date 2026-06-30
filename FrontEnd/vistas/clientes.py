@@ -4,6 +4,10 @@ from soa_lib import send_message
 
 LISTA_CLIENTES = []
 
+# FIX preventivo: mismo riesgo de bucle infinito visto en historial_ventas.py
+# si "if not LISTA_CLIENTES" coincide con una respuesta legítima de 0 clientes.
+YA_CARGADO = False
+
 def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
     global LISTA_CLIENTES
     es_admin = (page.session.store.get("rol") == "admin")
@@ -61,6 +65,41 @@ def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
             page.controls[0].disabled = True
         page.update()
 
+    def btn_eliminar_click(rut_empresa):
+        payload = {
+            "accion": "eliminar_cliente",
+            "user_rut": page.session.store.get("rut"),
+            "rut_empresa": rut_empresa
+        }
+        send_message(sock, "clien", json.dumps(payload))
+        if page.controls:
+            page.controls[0].disabled = True
+        page.update()
+
+    def confirmar_eliminar(rut_empresa, nombre):
+        # Diálogo de confirmación para evitar borrados accidentales
+        def cerrar_dialogo(e):
+            dialogo.open = False
+            page.update()
+
+        def ejecutar_eliminar(e):
+            dialogo.open = False
+            page.update()
+            btn_eliminar_click(rut_empresa)
+
+        dialogo = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Confirmar eliminación"),
+            content=ft.Text(f"¿Eliminar al cliente '{nombre}' (RUT {rut_empresa})? Esta acción no se puede deshacer."),
+            actions=[
+                ft.TextButton("Cancelar", on_click=cerrar_dialogo),
+                ft.TextButton("Eliminar", on_click=ejecutar_eliminar, style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+            ],
+        )
+        page.overlay.append(dialogo)
+        dialogo.open = True
+        page.update()
+
     tabla = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("ID")),
@@ -72,19 +111,31 @@ def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
     )
 
     for cli in LISTA_CLIENTES:
+        acciones = [
+            ft.TextButton(
+                "Editar",
+                on_click=lambda e, r=cli.get("rut_empresa"), n=cli.get("nombre"): cargar_en_formulario(r, n)
+            )
+        ]
+        if es_admin:
+            # NUEVO: opción de eliminar, solo visible para admins
+            acciones.append(
+                ft.TextButton(
+                    "Eliminar",
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400),
+                    on_click=lambda e, r=cli.get("rut_empresa"), n=cli.get("nombre"): confirmar_eliminar(r, n)
+                )
+            )
         tabla.rows.append(ft.DataRow(cells=[
             ft.DataCell(ft.Text(str(cli.get("id", "")))),
             ft.DataCell(ft.Text(str(cli.get("rut_empresa", "")))),
             ft.DataCell(ft.Text(str(cli.get("nombre", "")))),
-            ft.DataCell(
-                ft.TextButton(
-                    "Editar",
-                    on_click=lambda e, r=cli.get("rut_empresa"), n=cli.get("nombre"): cargar_en_formulario(r, n)
-                )
-            )
+            ft.DataCell(ft.Row(acciones))
         ]))
 
-    if not LISTA_CLIENTES:
+    global YA_CARGADO
+    if not YA_CARGADO:
+        YA_CARGADO = True
         send_message(sock, "clien", json.dumps({
             "accion": "obtener_clientes",
             "user_rut": page.session.store.get("rut")

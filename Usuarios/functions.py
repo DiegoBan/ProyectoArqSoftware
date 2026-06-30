@@ -38,7 +38,7 @@ def crear_usuario(db, datos_json):
         db.execute(verify)
         admins = db.fetchall()
         admins = [fila[0] for fila in admins]
-        if datos_json["user"] not in admins: 
+        if datos_json.get("user_rut") not in admins:
             return json.dumps({
                 "estado": "error",
                 "tipo": "Usuario no verificado",
@@ -65,6 +65,7 @@ def crear_usuario(db, datos_json):
             return json.dumps({
                 "estado": "ok",
                 "mensaje": "Creación exitosa",
+                "accion": "crear_usuario",
                 "detalles": {
                     "rut": rut,
                     "email": email,
@@ -125,46 +126,84 @@ def iniciar_sesion(db, datos_json):
             "mensaje": "error interno del servidor"
         })
 
-def modificar_rol(db, datos_json):
-    print("Modificando rol...")
-    query1 = """SELECT rol FROM usuarios WHERE id = %s;"""
+def obtener_usuarios(db):
+    # FIX: esta función no existía. El frontend (empleados.py) la necesita
+    # para poblar la tabla de empleados al entrar a la vista.
+    print("<--- Obteniendo usuarios --->")
+    query = """
+        SELECT rut, nombre, apellido, rol FROM usuarios;
+    """
+    try:
+        db.execute(query)
+        usuarios = db.fetchall()
+        if not usuarios:
+            print("No existen usuarios")
+            return json.dumps({
+                "estado": "error",
+                "mensaje": "No existen usuarios"
+            })
+        usuarios_formateados = [
+            {"rut": rut, "nombre": f"{nombre} {apellido}", "rol": rol}
+            for rut, nombre, apellido, rol in usuarios
+        ]
+        print("Se han obtenido usuarios")
+        return json.dumps({
+            "estado": "ok",
+            "mensaje": "Usuarios obtenidos",
+            "usuarios": usuarios_formateados
+        })
+    except Exception as e:
+        print(f"Error en la obtención de usuarios: {e}")
+        return json.dumps({
+            "estado": "error",
+            "mensaje": "error interno del servidor"
+        })
+
+def actualizar_rol(db, datos_json):
+    # FIX: antes se llamaba "modificar_rol" y esperaba "modificador_id" /
+    # "modificar_id" (IDs numéricos). El frontend (empleados.py) manda
+    # "user_rut" y "rut_empleado" (RUTs), igual que el resto del sistema
+    # (ej. login usa rut, no id). Se reescribe para trabajar con RUT.
+    print("Actualizando rol...")
+    query1 = """SELECT rol FROM usuarios WHERE rut = %s;"""
     query2 = """
         UPDATE usuarios
         SET rol = %s
-        WHERE id = %s;
+        WHERE rut = %s;
     """
     try:
-        db.execute(query1, (datos_json["modificador_id"],))
+        db.execute(query1, (datos_json.get("user_rut"),))
         modificador = db.fetchone()
-        if not modificador: # Usuario modificador no existe
+        if not modificador:
             print("Modificacion error: usuario modificador no encontrado")
             return json.dumps({
                 "estado": "error",
                 "mensaje": "Usuario modificador no encontrado"
             })
         rol_modificador = modificador[0]
-        if rol_modificador != "admin":  
+        if rol_modificador != "admin":
             print("Modificacion rechazada: usuario no es admin")
             return json.dumps({
                 "estado": "error",
                 "mensaje": "Usuario no es admin"
             })
-        db.execute(query2, (datos_json["nuevo_rol"], datos_json["modificar_id"]))
+        db.execute(query2, (datos_json.get("nuevo_rol"), datos_json.get("rut_empleado")))
         if db.rowcount == 0:
             print("Modificacion error: Usuario a modificar no existe")
             return json.dumps({
                 "estado": "error",
                 "mensaje": "Usuario a modificar no existe"
             })
-        db.connection.commit() 
-        print("Modificacion de rol con exito")
+        db.connection.commit()
+        print("Actualizacion de rol con exito")
         return json.dumps({
             "estado": "ok",
-            "mensaje": "rol modificado"
+            "mensaje": "Rol actualizado",
+            "accion": "actualizar_rol"
         })
     except Exception as e:
-        db.connection.rollback()    #   En caso de que la transacción falle, eliminar datos erroneos de base de datos
-        print(f"Error al modificar rol: {e}") 
+        db.connection.rollback()
+        print(f"Error al actualizar rol: {e}")
         return json.dumps({
             "estado": "error",
             "mensaje": "error interno del servidor"

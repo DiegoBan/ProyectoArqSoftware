@@ -44,7 +44,7 @@ def vista_crear_usuario(page: ft.Page, sock, cambiar_vista_func):
         # Construir el JSON
         payload = {
             "accion": "crear_usuario",
-            "user": rut_admin_actual, 
+            "user_rut": rut_admin_actual, 
             "rut": txt_rut.value,
             "email": txt_email.value,
             "password_hash": password_hash,

@@ -15,9 +15,6 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
     dropdown_producto = ft.Dropdown(label="⏳ Cargando productos desde el bus...", width=350, disabled=True)
     btn_generar = ft.ElevatedButton("Generar Cotización", width=350, height=45, bgcolor=ft.Colors.GREY_700, disabled=True)
 
-    # ---------------------------------------------------------
-    # LA FUNCIÓN CORREGIDA USANDO TU PROTOCOLO SOA
-    # ---------------------------------------------------------
     def pedir_datos_bloqueantes():
         import time
         clientes, productos = [], []

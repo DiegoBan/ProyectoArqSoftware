@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, crear_usuario, iniciar_sesion, modificar_rol
+from functions import dbconnect, crear_usuario, iniciar_sesion, actualizar_rol, obtener_usuarios
 import json
 
 sock = connect_to_bus()
@@ -39,8 +39,16 @@ try:
             case "iniciar_sesion":
                 datos_json = iniciar_sesion(db, datos_json)
                 send_message(sock, "front", datos_json) #   "front" es frontend, debe cambiar según como se programe el front
-            case "modificar_rol":
-                datos_json = modificar_rol(db, datos_json)
+            case "obtener_usuarios":
+                # FIX: el frontend (empleados.py) pide esta acción al entrar
+                # a la vista, pero no existía ningún case para ella, por lo
+                # que el servicio nunca respondía y la pantalla quedaba pegada.
+                datos_json = obtener_usuarios(db)
+                send_message(sock, "front", datos_json)
+            case "actualizar_rol":
+                # FIX: el case se llamaba "modificar_rol" pero el frontend
+                # manda "actualizar_rol", nunca matcheaba.
+                datos_json = actualizar_rol(db, datos_json)
                 send_message(sock, "front", datos_json)
 
 except Exception as e:

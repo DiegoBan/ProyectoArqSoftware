@@ -4,6 +4,14 @@ from soa_lib import send_message
 
 LISTA_EMPLEADOS = []
 
+# FIX preventivo: igual que en historial_ventas.py, usar "if not LISTA_EMPLEADOS"
+# para decidir si pedir datos sería un bug si alguna vez la respuesta real es
+# una lista vacía (ej. tabla de usuarios vacía por algún motivo). [] es falsy
+# en Python, así que se entraría en un bucle de pedidos infinitos. Se usa un
+# flag explícito para evitarlo, aunque en este caso siempre exista al menos
+# un admin.
+YA_CARGADO = False
+
 def vista_empleados(page: ft.Page, sock, cambiar_vista_func):
     global LISTA_EMPLEADOS
 
@@ -71,7 +79,9 @@ def vista_empleados(page: ft.Page, sock, cambiar_vista_func):
             )
         ]))
 
-    if not LISTA_EMPLEADOS:
+    global YA_CARGADO
+    if not YA_CARGADO:
+        YA_CARGADO = True
         send_message(sock, "usuar", json.dumps({
             "accion": "obtener_usuarios",
             "user_rut": page.session.store.get("rut")

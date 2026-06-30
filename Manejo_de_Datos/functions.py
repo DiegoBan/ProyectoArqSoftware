@@ -67,7 +67,8 @@ def actualizar_cotizacion(db, datos_json):
                 print("Actualizado correctamente")
                 return json.dumps({
                 "estado": "ok",
-                "mensaje": "Correctamente actualizado desde COTIZADO a OCO"
+                "mensaje": "Correctamente actualizado desde COTIZADO a OCO",
+                "accion": "act_cot"
                 })
             print("COT no encontrado, ninguna fila afectada")
             db.connection.rollback()
@@ -77,6 +78,18 @@ def actualizar_cotizacion(db, datos_json):
             })
         else:   #   Actualizar desde OCO a FACTURADO
             print(f"Actualizando cotizacion {datos_json['COT']} OCO a FACTURADO...")
+            # FIX: el frontend manda "facturas": [{"numero_factura":..., "fecha":...}]
+            # (lista anidada), pero esta función esperaba campos planos
+            # numero_factura/fecha_factura directamente en datos_json.
+            # Soportamos ambos formatos para no romper otros consumidores.
+            if "facturas" in datos_json and datos_json["facturas"]:
+                factura = datos_json["facturas"][0]
+                numero_factura = factura.get("numero_factura")
+                fecha_factura = factura.get("fecha")
+            else:
+                numero_factura = datos_json.get("numero_factura")
+                fecha_factura = datos_json.get("fecha_factura")
+
             actualizar = """
                 UPDATE ventas
                 SET estado = 'FACTURADO',
@@ -85,9 +98,9 @@ def actualizar_cotizacion(db, datos_json):
                 estado_factura = 'PENDIENTE'
                 WHERE COT = %s;
             """
-            db.execute(actualizar, (datos_json['numero_factura'], datos_json['fecha_factura'], datos_json['COT']))
+            db.execute(actualizar, (numero_factura, fecha_factura, datos_json['COT']))
             if db.rowcount != 1:
-                db.rollback()
+                db.connection.rollback()
                 print(f"COT {datos_json['COT']} no encontrado")
                 return json.dumps({
                     "estado": "error",
@@ -97,17 +110,21 @@ def actualizar_cotizacion(db, datos_json):
             print("Actualizado correctamente")
             return json.dumps({
                 "estado": "ok",
-                "mensaje": "Correctamente actualizado desde OCO a FACTURADO"
+                "mensaje": "Correctamente actualizado desde OCO a FACTURADO",
+                "accion": "act_cot"
             })
     except Exception as e:
-        print("Error al atender petición")
+        print(f"Error al atender petición: {e}")
         db.connection.rollback()
         return json.dumps({
             "estado": "error",
             "mensaje": "Error interno del servidor"
         })
         
-def ver_detalles(db):
+def ver_detalles(db, datos_json=None):
+    # FIX: el router (manejo.py) llama ver_detalles(db, datos_json) con 2
+    # argumentos, pero esta función solo aceptaba "db". Eso lanzaba
+    # TypeError en cada intento, antes de llegar siquiera a ejecutar la query.
     print("<-- Ver detalles de todas las cotizaciones --->")
     query = """
         SELECT COT fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia

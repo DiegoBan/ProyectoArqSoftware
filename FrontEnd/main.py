@@ -23,12 +23,7 @@ def main(page: ft.Page):
     # 1. Conexión al Bus
     try:
         sock = connect_to_bus()
-        send_message(sock, "sinit", "front")  
-        print("Frontend conectado al bus como 'front'")
-        respuesta_init = receive_message(sock) 
-        print(f"El bus nos recibió con: {respuesta_init}")
-
-        print("Frontend conectado al bus como 'front'")
+        send_message(sock, "sinit", "front")
     except Exception as e:
         page.add(ft.Text(f"Error crítico conectando al bus: {e}", color=ft.Colors.RED))
         return
@@ -39,30 +34,159 @@ def main(page: ft.Page):
     # llenando el buffer TCP con mensajes basura antes de autenticarse.
     def cambiar_vista(nombre_vista):
         page.controls.clear()
-
-        if nombre_vista == "login":
-            page.add(vista_login(page, sock, cambiar_vista)) 
-        elif nombre_vista == "crear_usuario":
-            page.add(vista_crear_usuario(page, sock, cambiar_vista))
-        elif nombre_vista == "dashboard":
-            page.add(vista_dashboard(page, sock, cambiar_vista))
-        elif nombre_vista == "productos":
-            page.add(vista_productos(page, sock, cambiar_vista))
-        elif nombre_vista == "confirmar_producto":
-            page.add(vista_confirmar_producto(page, sock, cambiar_vista))
-        elif nombre_vista == "ventas":
-            page.add(vista_dashboard_ventas(page, sock, cambiar_vista))
-        elif nombre_vista == "nueva_cotizacion":
-            page.add(vista_nueva_cotizacion(page, sock, cambiar_vista))
-        elif nombre_vista == "estado_cotizaciones":
-            page.add(vista_estado_cotizaciones(page, sock, cambiar_vista))
-        elif nombre_vista == "clientes":
-            page.add(vista_clientes(page, sock, cambiar_vista))
-        elif nombre_vista == "empleados":
-            page.add(vista_empleados(page, sock, cambiar_vista))
-
+        constructores = {
+            "login":               lambda: vista_login(page, sock, cambiar_vista),
+            "crear_usuario":       lambda: vista_crear_usuario(page, sock, cambiar_vista),
+            "dashboard":           lambda: vista_dashboard(page, sock, cambiar_vista),
+            "productos":           lambda: vista_productos(page, sock, cambiar_vista),
+            "confirmar_producto":  lambda: vista_confirmar_producto(page, sock, cambiar_vista),
+            "ventas":              lambda: vista_dashboard_ventas(page, sock, cambiar_vista),
+            "nueva_cotizacion":    lambda: vista_nueva_cotizacion(page, sock, cambiar_vista),
+            "estado_cotizaciones": lambda: vista_estado_cotizaciones(page, sock, cambiar_vista),
+            "clientes":            lambda: vista_clientes(page, sock, cambiar_vista),
+            "empleados":           lambda: vista_empleados(page, sock, cambiar_vista),
+        }
+        constructor = constructores.get(nombre_vista)
+        if constructor:
+            page.add(constructor())
         page.update()
-    # Arrancar la aplicación en la vista por defecto (Login)
+
+    # Helper: mostrar snackbar y siempre rehabilitar la UI
+    def mostrar_snackbar(mensaje, color):
+        alerta = ft.SnackBar(ft.Text(mensaje), bgcolor=color)
+        page.overlay.append(alerta)
+        alerta.open = True
+        if page.controls:
+            page.controls[0].disabled = False
+        page.update()
+
+    # 3. Hilo de Escucha con buffer acumulador propio.
+    # PROBLEMA: soa_lib.receive_message usa recv() que no respeta límites de mensaje
+    # en TCP. Si el bus concatena varios mensajes en el buffer (como se ve en el log:
+    # <00031venta...00053usuar...00035clien...>), recv(5) puede leer a la mitad
+    # de un mensaje anterior y corromper el parse del JSON → pantalla pegada.
+    # SOLUCIÓN: acumular bytes aquí y extraer mensajes según el protocolo [5 longitud][N contenido].
+    def escuchar_bus():
+        tcp_buffer = b''
+
+        def leer_exacto(n):
+            nonlocal tcp_buffer
+            while len(tcp_buffer) < n:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    raise ConnectionError("Bus cerró la conexión")
+                tcp_buffer += chunk
+            resultado = tcp_buffer[:n]
+            tcp_buffer = tcp_buffer[n:]
+            return resultado
+
+        while True:
+            try:
+                raw_len = leer_exacto(5)
+                n = int(raw_len)
+                data = leer_exacto(n)
+
+                # Protocolo: [5 chars servicio destino][payload JSON]
+                mensaje_crudo = data[5:].decode()
+                respuesta = json.loads(mensaje_crudo)
+
+                if respuesta.get("estado") == "ok":
+
+                    if "usuario" in respuesta:
+                        # Login exitoso
+                        usuario = respuesta.get("usuario", {})
+                        page.session.store.set("rol", str(usuario.get("rol")))
+                        page.session.store.set("rut", usuario.get("rut"))
+                        page.session.store.set("nombre", usuario.get("nombre"))
+                        cambiar_vista("dashboard")
+
+                    elif "usuarios" in respuesta:
+                        import vistas.empleados as ve
+                        ve.LISTA_EMPLEADOS = respuesta["usuarios"]
+                        ve.YA_CARGADO = True  # evita que la vista vuelva a pedir datos
+                        cambiar_vista("empleados")
+
+                    elif "clientes" in respuesta:
+                        import vistas.clientes as vc
+                        vc.LISTA_CLIENTES = respuesta["clientes"]
+                        vc.YA_CARGADO = True  # evita que la vista vuelva a pedir datos
+                        cambiar_vista("clientes")
+
+                    elif isinstance(respuesta.get("detalles"), list):
+                        # Respuesta de "ver_detalles": detalles es una LISTA de
+                        # cotizaciones. (Distinto de actualizar/registrar_cliente,
+                        # donde "detalles" es un dict con los datos del cliente.)
+                        import vistas.historial_ventas as vh
+                        vh.LISTA_COTIZACIONES = respuesta["detalles"]
+                        vh.YA_CARGADO = True  # evita que la vista vuelva a pedir datos
+                        cambiar_vista("estado_cotizaciones")
+
+                    else:
+                        # El servicio responde {"estado":"ok","mensaje":"..."} SIN campo "accion".
+                        # Para saber qué refrescar usamos el request que enviamos, no la respuesta.
+                        # Como no tenemos acceso directo al request aquí, refrescamos ambas listas
+                        # de forma segura según qué vista está activa, o simplemente rehabilitamos
+                        # la UI y dejamos que el usuario navegue. Para acciones que sí devuelven
+                        # "accion" en la respuesta mantenemos el comportamiento anterior.
+                        accion_resp = respuesta.get("accion")
+                        if accion_resp in ("actualizar_rol", "crear_usuario"):
+                            import vistas.empleados as ve
+                            ve.YA_CARGADO = False
+                            send_message(sock, "usuar", json.dumps({
+                                "accion": "obtener_usuarios",
+                                "user_rut": page.session.store.get("rut")
+                            }))
+                        elif accion_resp in ("crear_cliente", "actualizar_cliente", "eliminar_cliente"):
+                            import vistas.clientes as vc
+                            vc.YA_CARGADO = False
+                            send_message(sock, "clien", json.dumps({
+                                "accion": "obtener_clientes",
+                                "user_rut": page.session.store.get("rut")
+                            }))
+                        elif accion_resp == "act_cot":
+                            # Tras actualizar una cotización, volvemos a pedir el
+                            # historial completo para reflejar el nuevo estado.
+                            import vistas.historial_ventas as vh
+                            vh.LISTA_COTIZACIONES = []
+                            vh.YA_CARGADO = False
+                            send_message(sock, "manej", json.dumps({"accion": "ver_detalles"}))
+                        else:
+                            # Respuesta genérica sin "accion": solo rehabilitar UI
+                            if page.controls:
+                                page.controls[0].disabled = False
+                        mostrar_snackbar(respuesta.get("mensaje", "Éxito"), ft.Colors.GREEN_700)
+
+                else:
+                    # FIX: si el error viene de un intento de login, el botón
+                    # "Iniciar Sesión" se quedó con texto "Autenticando..." y
+                    # disabled=True (lo dejamos así en login.py al enviar).
+                    # mostrar_snackbar() solo rehabilita page.controls[0] como
+                    # Container, no resetea el botón interno. Como no sabemos
+                    # con certeza si la página activa es el login, simplemente
+                    # la recargamos cuando estamos ahí: es barato y evita tener
+                    # que rastrear qué request generó este error.
+                    if page.session.store.get("rut") is None:
+                        # Sin sesión iniciada => estábamos en el login
+                        mostrar_snackbar(respuesta.get("mensaje", "Error desconocido"), ft.Colors.RED_700)
+                        cambiar_vista("login")
+                    else:
+                        mostrar_snackbar(respuesta.get("mensaje", "Error desconocido"), ft.Colors.RED_700)
+
+            except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as ex:
+                print(f"[escuchar_bus] Error de parsing: {ex}")
+                if page.controls:
+                    page.controls[0].disabled = False
+                page.update()
+            except ConnectionError as ex:
+                print(f"[escuchar_bus] Conexión perdida: {ex}")
+                break
+            except Exception as ex:
+                print(f"[escuchar_bus] Error inesperado: {ex}")
+                if page.controls:
+                    page.controls[0].disabled = False
+                page.update()
+
+    page.run_thread(escuchar_bus)
     cambiar_vista("login")
 
 

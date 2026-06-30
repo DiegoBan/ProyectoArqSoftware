@@ -1,5 +1,5 @@
 from soa_lib import connect_to_bus, send_message, receive_message
-from functions import dbconnect, obtener_clientes, actualizar_cliente, registrar_cliente
+from functions import dbconnect, obtener_clientes, actualizar_cliente, registrar_cliente, eliminar_cliente
 import json
 
 sock = connect_to_bus()
@@ -34,14 +34,21 @@ try:
         print(f"Realizando acción: '{accion}'")
         match accion:
             case "obtener_clientes":
-                datos_json = obtener_clientes(db)
-                send_message(sock, "front", datos_json)
+                respuesta_json = obtener_clientes(db)
+                send_message(sock, "front", respuesta_json)
             case "actualizar_cliente":
-                datos_json = actualizar_cliente(db, datos_json)
-                send_message(sock, "front", datos_json)
-            case "regitrar_cliente":
-                datos_json = registrar_cliente(db, datos_json)
-                send_message(sock, "front", datos_json)
+                respuesta_json = actualizar_cliente(db, datos_json)
+                send_message(sock, "front", respuesta_json)
+            case "crear_cliente":
+                # FIX: el case anterior decía "regitrar_cliente" (typo) y nunca
+                # matcheaba con lo que manda el frontend ("crear_cliente"),
+                # por eso el servicio nunca respondía y la UI quedaba pegada.
+                respuesta_json = registrar_cliente(db, datos_json)
+                send_message(sock, "front", respuesta_json)
+            case "eliminar_cliente":
+                # NUEVO: funcionalidad solicitada, no existía en el backend.
+                respuesta_json = eliminar_cliente(db, datos_json)
+                send_message(sock, "front", respuesta_json)
 
 except Exception as e:
     print(f"Error en el servicio: {e}")
