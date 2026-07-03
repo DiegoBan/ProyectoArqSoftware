@@ -1,85 +1,56 @@
 import flet as ft
 import json
-import asyncio
 from datetime import datetime
-from soa_lib import send_message, receive_message # <--- ¡IMPORTANTE: Agrega receive_message aquí!
+from soa_lib import send_message
+
+CLIENTES_PARA_COT = None   
+PRODUCTOS_PARA_COT = None
+
 
 def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
-    
+    global CLIENTES_PARA_COT, PRODUCTOS_PARA_COT
+
+    clientes = CLIENTES_PARA_COT or []
+    productos = PRODUCTOS_PARA_COT or []
+    datos_listos = CLIENTES_PARA_COT is not None and PRODUCTOS_PARA_COT is not None
+
     txt_cot = ft.TextField(label="Número de Cotización (COT)", width=350)
     txt_cantidad = ft.TextField(label="Cantidad", width=150, value="1")
     txt_precio_final = ft.TextField(label="Precio Unit. ($)", width=180)
-    txt_fecha = ft.TextField(label="Fecha de Emisión", value=datetime.now().strftime("%Y-%m-%d"), width=350, disabled=True)
+    txt_fecha = ft.TextField(
+        label="Fecha de Emisión",
+        value=datetime.now().strftime("%Y-%m-%d"),
+        width=350,
+        disabled=True
+    )
 
-    dropdown_cliente = ft.Dropdown(label="⏳ Cargando clientes desde el bus...", width=350, disabled=True)
-    dropdown_producto = ft.Dropdown(label="⏳ Cargando productos desde el bus...", width=350, disabled=True)
-    btn_generar = ft.ElevatedButton("Generar Cotización", width=350, height=45, bgcolor=ft.Colors.GREY_700, disabled=True)
+    dropdown_cliente = ft.Dropdown(
+        label="Seleccionar Cliente" if clientes else "⏳ Cargando clientes...",
+        width=350,
+        disabled=not clientes,
+        options=[ft.dropdown.Option(key=str(c["id"]), text=c["nombre"]) for c in clientes]
+    )
 
-    def pedir_datos_bloqueantes():
-        import time
-        clientes, productos = [], []
-        
-        try:
-            # --- PEDIR CLIENTES ---
-            send_message(sock, "clien", json.dumps({"accion": "obtener_clientes"}))
-            resp_c_raw = receive_message(sock) 
-            print(resp_c_raw)
-            
-            # PRIMERO verificamos que haya llegado algo, LUEGO cortamos y decodificamos
-            if resp_c_raw:
-                resp_c_limpio = resp_c_raw[5:].decode()
-                try:
-                    clientes = json.loads(resp_c_limpio).get("clientes", [])
-                except json.JSONDecodeError:
-                    print(f"Error decodificando Clientes: {resp_c_limpio}")
-            
-            # --- PEDIR PRODUCTOS ---
-            send_message(sock, "produ", json.dumps({"accion": "obtener_productos"}))
-            resp_p_raw = receive_message(sock) 
-            print(resp_p_raw)
-            
-            if resp_p_raw:
-                resp_p_limpio = resp_p_raw[5:].decode()
-                try:
-                    productos = json.loads(resp_p_limpio).get("productos", [])
-                except json.JSONDecodeError:
-                    print(f"Error decodificando Productos: {resp_p_limpio}")
-                
-        except Exception as e:
-            print(f"Error al comunicar con el bus SOA: {e}")
-        finally:
-            sock.settimeout(None)
-            
-        return clientes, productos
+    dropdown_producto = ft.Dropdown(
+        label="Seleccionar Producto" if productos else "⏳ Cargando productos...",
+        width=350,
+        disabled=not productos,
+        options=[ft.dropdown.Option(key=str(p["id"]), text=p["nombre"]) for p in productos]
+    )
 
-    async def cargar_datos_async():
-        datos_clientes, datos_productos = await asyncio.to_thread(pedir_datos_bloqueantes)
-        
-        if datos_clientes:
-            dropdown_cliente.options = [ft.dropdown.Option(key=str(c["id"]), text=c["nombre"]) for c in datos_clientes]
-            dropdown_cliente.label = "Seleccionar Cliente"
-            dropdown_cliente.disabled = False
-        else:
-            dropdown_cliente.label = "⚠ Error al cargar clientes"
+    btn_generar = ft.ElevatedButton(
+        "Generar Cotización",
+        width=350,
+        height=45,
+        bgcolor=ft.Colors.BLUE_700 if datos_listos else ft.Colors.GREY_700,
+        disabled=not datos_listos
+    )
 
-        if datos_productos:
-            dropdown_producto.options = [ft.dropdown.Option(key=str(p["id"]), text=p["nombre"]) for p in datos_productos]
-            dropdown_producto.label = "Seleccionar Producto"
-            dropdown_producto.disabled = False
-            
-        if datos_clientes and datos_productos:
-            btn_generar.disabled = False 
-            btn_generar.bgcolor = ft.Colors.BLUE_700
-
-        page.update() 
-
-    # ---------------------------------------------------------
-    # BOTÓN CREAR COTIZACIÓN
-    # ---------------------------------------------------------
     def btn_crear_cotizacion_click(e):
-        if not txt_cot.value or not dropdown_cliente.value or not dropdown_producto.value or not txt_precio_final.value or not txt_cantidad.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Complete todos los campos"), bgcolor=ft.Colors.ORANGE_700)
-            page.snack_bar.open = True
+        if not txt_cot.value or not dropdown_cliente.value or not dropdown_producto.value \
+                or not txt_precio_final.value or not txt_cantidad.value:
+            page.overlay.append(ft.SnackBar(ft.Text("Complete todos los campos"), bgcolor=ft.Colors.ORANGE_700))
+            page.overlay[-1].open = True
             page.update()
             return
 
@@ -88,60 +59,55 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
             "COT": int(txt_cot.value),
             "id_cliente": int(dropdown_cliente.value),
             "fecha_cot": txt_fecha.value,
-            "productos": [{"id_producto": int(dropdown_producto.value), "cantidad": int(txt_cantidad.value), "precio_unitario": int(txt_precio_final.value)}]
+            "productos": [{
+                "id_producto": int(dropdown_producto.value),
+                "cantidad": int(txt_cantidad.value),
+                "precio_unitario": int(txt_precio_final.value)
+            }]
         }
-        
-        try:
-            # Actualizamos la UI justo antes de bloquear el hilo principal
-            btn_generar.text = "Guardando en BD..."
-            btn_generar.disabled = True
-            page.update()
 
-            # --- LLAMADA SÍNCRONA AL BUS ---
-            sock.settimeout(5.0)
-            send_message(sock, "manej", json.dumps(payload))
-            respuesta_backend_raw = receive_message(sock)
-            sock.settimeout(None)
+        btn_generar.text = "Guardando..."
+        btn_generar.disabled = True
+        if page.controls:
+            page.controls[0].disabled = True
+        page.update()
 
-            # Limpiamos la cabecera 'front' si es que llegó
-            if respuesta_backend_raw:
-                respuesta_backend = respuesta_backend_raw[5:].decode()
-                print("El backend respondió:", respuesta_backend)
-            
-            page.snack_bar = ft.SnackBar(ft.Text("Cotización generada exitosamente"), bgcolor=ft.Colors.GREEN_700)
-            page.snack_bar.open = True
-            cambiar_vista_func("ventas")
-            
-        except Exception as error:
-            # Si el socket falla (timeout o red), devolvemos el botón a la normalidad
-            sock.settimeout(None)
-            btn_generar.text = "Generar Cotización"
-            btn_generar.disabled = False
-            print(f"Error en creación: {error}")
-            
-            page.snack_bar = ft.SnackBar(ft.Text("Error al guardar en la base de datos"), bgcolor=ft.Colors.RED_700)
-            page.snack_bar.open = True
-            page.update()
+        # Solo enviamos. main.py procesa la respuesta en escuchar_bus().
+        send_message(sock, "manej", json.dumps(payload))
 
     btn_generar.on_click = btn_crear_cotizacion_click
-    btn_volver = ft.TextButton("Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
 
-    # ---------------------------------------------------------
-    # RENDERIZADO VISUAL
-    # ---------------------------------------------------------
-    recuadro_cotizacion = ft.Column(
-        controls=[
-            ft.Text("Nueva Cotización", size=26, weight=ft.FontWeight.BOLD),
-            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            txt_fecha, txt_cot, dropdown_cliente, dropdown_producto,
-            ft.Row([txt_cantidad, txt_precio_final], alignment=ft.MainAxisAlignment.CENTER, width=350),
-            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-            btn_generar, btn_volver
-        ],
-        alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        scroll=ft.ScrollMode.AUTO
+    # Si los datos aún no están cargados, pedirlos al bus.
+    # main.py recibirá ambas respuestas y reconstruirá esta vista con los datos.
+    if CLIENTES_PARA_COT is None:
+        send_message(sock, "clien", json.dumps({
+            "accion": "obtener_clientes",
+            "user_rut": page.session.store.get("rut")
+        }))
+    if PRODUCTOS_PARA_COT is None:
+        send_message(sock, "produ", json.dumps({"accion": "obtener_productos"}))
+
+    btn_volver = ft.TextButton(
+        "Volver al Menú de Ventas",
+        on_click=lambda _: cambiar_vista_func("ventas")
     )
 
-    page.run_task(cargar_datos_async)
-
-    return ft.Container(content=recuadro_cotizacion, alignment=ft.Alignment.CENTER, expand=True, padding=20)
+    return ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Text("Nueva Cotización", size=26, weight=ft.FontWeight.BOLD),
+                ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
+                txt_fecha, txt_cot, dropdown_cliente, dropdown_producto,
+                ft.Row([txt_cantidad, txt_precio_final],
+                       alignment=ft.MainAxisAlignment.CENTER, width=350),
+                ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
+                btn_generar, btn_volver
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            scroll=ft.ScrollMode.AUTO
+        ),
+        alignment=ft.Alignment.CENTER,
+        expand=True,
+        padding=20
+    )

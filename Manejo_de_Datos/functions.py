@@ -38,7 +38,8 @@ def crear_cotizacion(db, datos_json):
         print("Cotizacion creada")
         return json.dumps({
             "estado": "ok",
-            "mensaje": "Cotización creada correctamente"
+            "mensaje": "Cotización creada correctamente",
+            "accion": "crear_cot"
         })
     except Exception as e:
         print(f"Error al crear corizacion: {e}")
@@ -149,7 +150,12 @@ def ver_detalles(db, datos_json=None):
             
             for clave, valor in fila_dict.items():
                 if hasattr(valor, 'isoformat'):
+                    # Fechas → string ISO
                     fila_dict[clave] = valor.isoformat()
+                elif type(valor).__name__ == 'Decimal':
+                    # Decimal (campos NUMERIC de PostgreSQL) → int
+                    # json.dumps no sabe serializar Decimal, lanza TypeError.
+                    fila_dict[clave] = int(valor)
             detalles_formateados.append(fila_dict)
         print("Se obtuvieron bien los resultados:", len(detalles_formateados), "filas")
         

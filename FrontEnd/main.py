@@ -32,7 +32,11 @@ def main(page: ft.Page):
     # ANTES: el dict evaluaba TODAS las vistas al construirse, ejecutando los
     # send_message de clientes/empleados/ventas aunque estuvieras en el login,
     # llenando el buffer TCP con mensajes basura antes de autenticarse.
+    # Variable mutable para saber qué vista está activa actualmente
+    vista_actual = {"nombre": "login"}
+
     def cambiar_vista(nombre_vista):
+        vista_actual["nombre"] = nombre_vista
         page.controls.clear()
         constructores = {
             "login":               lambda: vista_login(page, sock, cambiar_vista),
@@ -67,17 +71,18 @@ def main(page: ft.Page):
     # de un mensaje anterior y corromper el parse del JSON → pantalla pegada.
     # SOLUCIÓN: acumular bytes aquí y extraer mensajes según el protocolo [5 longitud][N contenido].
     def escuchar_bus():
-        tcp_buffer = b''
+        # Usar lista de un elemento como contenedor mutable del buffer,
+        # para poder resetearlo desde el except sin problemas de scope.
+        buf = [b'']
 
         def leer_exacto(n):
-            nonlocal tcp_buffer
-            while len(tcp_buffer) < n:
+            while len(buf[0]) < n:
                 chunk = sock.recv(4096)
                 if not chunk:
                     raise ConnectionError("Bus cerró la conexión")
-                tcp_buffer += chunk
-            resultado = tcp_buffer[:n]
-            tcp_buffer = tcp_buffer[n:]
+                buf[0] += chunk
+            resultado = buf[0][:n]
+            buf[0] = buf[0][n:]
             return resultado
 
         while True:
@@ -107,10 +112,26 @@ def main(page: ft.Page):
                         cambiar_vista("empleados")
 
                     elif "clientes" in respuesta:
+                        import vistas.nueva_cotizacion as vnc
                         import vistas.clientes as vc
-                        vc.LISTA_CLIENTES = respuesta["clientes"]
-                        vc.YA_CARGADO = True  # evita que la vista vuelva a pedir datos
-                        cambiar_vista("clientes")
+                        if vista_actual["nombre"] == "nueva_cotizacion":
+                            # Respuesta solicitada por nueva_cotizacion para el dropdown
+                            vnc.CLIENTES_PARA_COT = respuesta["clientes"]
+                            if vnc.PRODUCTOS_PARA_COT is not None:
+                                cambiar_vista("nueva_cotizacion")
+                        else:
+                            # Respuesta normal de gestión de clientes
+                            vc.LISTA_CLIENTES = respuesta["clientes"]
+                            vc.YA_CARGADO = True
+                            cambiar_vista("clientes")
+
+                    elif "productos" in respuesta:
+                        import vistas.nueva_cotizacion as vnc
+                        if vista_actual["nombre"] == "nueva_cotizacion":
+                            # Respuesta solicitada por nueva_cotizacion para el dropdown
+                            vnc.PRODUCTOS_PARA_COT = respuesta["productos"]
+                            if vnc.CLIENTES_PARA_COT is not None:
+                                cambiar_vista("nueva_cotizacion")
 
                     elif isinstance(respuesta.get("detalles"), list):
                         # Respuesta de "ver_detalles": detalles es una LISTA de
@@ -144,27 +165,30 @@ def main(page: ft.Page):
                                 "user_rut": page.session.store.get("rut")
                             }))
                         elif accion_resp == "act_cot":
-                            # Tras actualizar una cotización, volvemos a pedir el
-                            # historial completo para reflejar el nuevo estado.
                             import vistas.historial_ventas as vh
                             vh.LISTA_COTIZACIONES = []
                             vh.YA_CARGADO = False
                             send_message(sock, "manej", json.dumps({"accion": "ver_detalles"}))
+                        elif accion_resp == "crear_cot":
+                            # Cotización creada: resetear buffers de nueva_cotizacion
+                            # para que la próxima vez recargue clientes y productos frescos,
+                            # y volver al menú de ventas.
+                            import vistas.nueva_cotizacion as vnc
+                            import vistas.historial_ventas as vh
+                            vnc.CLIENTES_PARA_COT = None
+                            vnc.PRODUCTOS_PARA_COT = None
+                            # Resetear historial para que la próxima vez que el
+                            # usuario entre a "Estado de Cotizaciones" pida los
+                            # datos frescos al bus e incluya la nueva cotización.
+                            vh.LISTA_COTIZACIONES = []
+                            vh.YA_CARGADO = False
+                            cambiar_vista("ventas")
                         else:
-                            # Respuesta genérica sin "accion": solo rehabilitar UI
                             if page.controls:
                                 page.controls[0].disabled = False
                         mostrar_snackbar(respuesta.get("mensaje", "Éxito"), ft.Colors.GREEN_700)
 
                 else:
-                    # FIX: si el error viene de un intento de login, el botón
-                    # "Iniciar Sesión" se quedó con texto "Autenticando..." y
-                    # disabled=True (lo dejamos así en login.py al enviar).
-                    # mostrar_snackbar() solo rehabilita page.controls[0] como
-                    # Container, no resetea el botón interno. Como no sabemos
-                    # con certeza si la página activa es el login, simplemente
-                    # la recargamos cuando estamos ahí: es barato y evita tener
-                    # que rastrear qué request generó este error.
                     if page.session.store.get("rut") is None:
                         # Sin sesión iniciada => estábamos en el login
                         mostrar_snackbar(respuesta.get("mensaje", "Error desconocido"), ft.Colors.RED_700)
@@ -173,7 +197,11 @@ def main(page: ft.Page):
                         mostrar_snackbar(respuesta.get("mensaje", "Error desconocido"), ft.Colors.RED_700)
 
             except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as ex:
-                print(f"[escuchar_bus] Error de parsing: {ex}")
+                # FIX CRÍTICO: cuando int(raw_len) falla significa que el buffer
+                # se desincronizó. Vaciamos buf[0] para re-sincronizar con el
+                # protocolo, aunque perdamos el mensaje actual.
+                buf[0] = b''
+                print(f"[escuchar_bus] Error de parsing (buffer reseteado): {ex}")
                 if page.controls:
                     page.controls[0].disabled = False
                 page.update()
