@@ -68,10 +68,10 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         lbl_detalle_titulo.value = "Detalles del Documento Seleccionado:"
         lbl_info_id.value = f"COT: {cot.get('cot', 'ERROR')}"
         lbl_info_cliente.value = f"Cliente: {cot.get('nombre_cliente', 'N/A')}"
-        lbl_info_producto.value = f"Producto: {cantidad}x {cot.get('nombre', 'N/A')} (PN: {seguro(cot.get('PN'))})"
+        lbl_info_producto.value = f"Producto: {cantidad}x {cot.get('nombre', 'N/A')} (PN: {seguro(cot.get('pn'))})"
         lbl_info_fechas.value = f"Creado: {seguro(cot.get('fecha_creacion'))[:10]} | Fecha COT: {seguro(cot.get('fecha_cot'))}"
         lbl_info_oco.value = f"OC: {seguro(cot.get('orden_de_compra'))} | Nota Venta: {seguro(cot.get('nota_de_venta'))} | Fecha: {seguro(cot.get('fecha_oco'))}"
-        lbl_info_factura.value = f"Factura: {seguro(cot.get('numero_factura'))} | Estado: {seguro(cot.get('estado_factura'))}"
+        lbl_info_factura.value = f"Factura: {seguro(cot.get('numero_factura'))}"
         lbl_info_total.value = f"Total Línea: ${total:,}"
 
         estado = str(cot.get('estado', '')).lower()
