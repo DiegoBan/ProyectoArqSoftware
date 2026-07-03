@@ -87,9 +87,17 @@ def vista_nueva_cotizacion(page: ft.Page, sock, cambiar_vista_func):
     if PRODUCTOS_PARA_COT is None:
         send_message(sock, "produ", json.dumps({"accion": "obtener_productos"}))
 
+    def salir_de_vista(e):
+        global CLIENTES_PARA_COT, PRODUCTOS_PARA_COT
+        # 1. Vaciamos las variables para que la próxima vez pida datos frescos
+        CLIENTES_PARA_COT = None
+        PRODUCTOS_PARA_COT = None
+        # 2. Cambiamos de vista
+        cambiar_vista_func("ventas")
+
     btn_volver = ft.TextButton(
         "Volver al Menú de Ventas",
-        on_click=lambda _: cambiar_vista_func("ventas")
+        on_click=salir_de_vista
     )
 
     return ft.Container(

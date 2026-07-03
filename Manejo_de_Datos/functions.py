@@ -51,6 +51,15 @@ def crear_cotizacion(db, datos_json):
     
 def actualizar_cotizacion(db, datos_json):
     print("Atendiendo petición de actualización...")
+    
+    cot_id = datos_json.get("COT") or datos_json.get("cot") or datos_json.get("id")
+    if not cot_id:
+        print("Error: No se recibió un ID de cotización válido en el payload.")
+        return json.dumps({
+            "estado": "error",
+            "mensaje": "ID de cotización (COT) no proporcionado"
+        })
+        
     try:
         if "orden_de_compra" in datos_json: #   Actualizar desde COTIZADO a OCO
             print(f"Actualizando cotizacion {datos_json['COT']} COTIZADO a OCO...")
@@ -128,7 +137,7 @@ def ver_detalles(db, datos_json=None):
     # TypeError en cada intento, antes de llegar siquiera a ejecutar la query.
     print("<-- Ver detalles de todas las cotizaciones --->")
     query = """
-        SELECT COT fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia
+        SELECT COT, fecha_creacion, estado, fecha_cot, orden_de_compra, fecha_oco, nota_de_venta, numero_factura, fecha_factura, estado_factura, clientes.nombre as nombre_cliente, venta_detalle.cantidad, venta_detalle.precio_unitario, productos.nombre, productos.familia, productos.subfamilia, productos.descripcion, productos.PN, productos.serie, guia_detalle.numero_guia, guia_detalle.cantidad as cantidad_guia
         FROM ventas
         JOIN clientes ON ventas.id_cliente = clientes.id
         JOIN venta_detalle ON ventas.COT = venta_detalle.id_venta

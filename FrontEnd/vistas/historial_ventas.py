@@ -65,7 +65,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         total = cantidad * precio
 
         lbl_detalle_titulo.value = "Detalles del Documento Seleccionado:"
-        lbl_info_id.value = f"COT: {cot.get('COT', 'ERROR')}"
+        lbl_info_id.value = f"COT: {cot.get('cot', 'ERROR')}"
         lbl_info_cliente.value = f"Cliente: {cot.get('nombre_cliente', 'N/A')}"
         lbl_info_producto.value = f"Producto: {cantidad}x {cot.get('nombre', 'N/A')} (PN: {seguro(cot.get('PN'))})"
         lbl_info_fechas.value = f"Creado: {seguro(cot.get('fecha_creacion'))[:10]} | Fecha COT: {seguro(cot.get('fecha_cot'))}"
@@ -101,7 +101,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
 
         estado_actual = str(cotizacion_seleccionada.get("estado", "")).lower()
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
-
+        print(cotizacion_seleccionada)
         if estado_actual == "cotizado":
             if not txt_orden_compra.value or not txt_nota_venta.value:
                 page.snack_bar = ft.SnackBar(ft.Text("Debe ingresar la Orden de Compra y la Nota de Venta"), bgcolor=ft.Colors.RED_700)
@@ -111,7 +111,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
 
             payload = {
                 "accion": "act_cot",
-                "COT": cotizacion_seleccionada["COT"],
+                "COT": cotizacion_seleccionada["cot"],
                 "orden_de_compra": txt_orden_compra.value,
                 "fecha_oco": fecha_actual,
                 "nota_de_venta": int(txt_nota_venta.value)
@@ -126,7 +126,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
 
             payload = {
                 "accion": "act_cot",
-                "COT": cotizacion_seleccionada["COT"],
+                "COT": cotizacion_seleccionada["cot"],
                 "facturas": [{
                     "numero_factura": int(txt_num_factura.value),
                     "fecha": fecha_actual,
@@ -169,7 +169,7 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             fila_renderizada = ft.Container(
                 content=ft.Row([
                     ft.TextButton("Ver", width=60, on_click=crear_evento_click()),
-                    ft.Text(str(cot.get("COT", "N/A")), width=60),
+                    ft.Text(str(cot.get("cot", "N/A")), width=60),
                     ft.Text(estado.upper(), width=90, weight=ft.FontWeight.BOLD, color=color_estado),
                     ft.Text(str(cot.get("nombre_cliente", "N/A"))[:15], width=160),
                     ft.Text(f"{cot.get('cantidad', 0)}x {str(cot.get('nombre', 'N/A'))[:15]}", width=180),
