@@ -13,6 +13,7 @@ YA_CARGADO = False
 def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
 
     cotizacion_seleccionada = None
+    es_solo_lectura = page.session.store.get("rol") == "contador"
 
     # --- UI: Etiquetas y Campos ---
     lbl_detalle_titulo = ft.Text("Seleccione una cotización para gestionarla", size=14, color=ft.Colors.GREY_400)
@@ -71,7 +72,6 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         lbl_info_fechas.value = f"Creado: {seguro(cot.get('fecha_creacion'))[:10]} | Fecha COT: {seguro(cot.get('fecha_cot'))}"
         lbl_info_oco.value = f"OC: {seguro(cot.get('orden_de_compra'))} | Nota Venta: {seguro(cot.get('nota_de_venta'))} | Fecha: {seguro(cot.get('fecha_oco'))}"
         lbl_info_factura.value = f"Factura: {seguro(cot.get('numero_factura'))} | Estado: {seguro(cot.get('estado_factura'))}"
-        lbl_info_guia.value = f"Guía Despacho: {seguro(cot.get('numero_guia'))} | Cant. Entregada: {seguro(cot.get('cantidad_guia'))}"
         lbl_info_total.value = f"Total Línea: ${total:,}"
 
         estado = str(cot.get('estado', '')).lower()
@@ -82,15 +82,16 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
         txt_num_factura.visible = False
         btn_actualizar.visible = False
 
-        if estado == "cotizado":
-            txt_orden_compra.visible = True
-            txt_nota_venta.visible = True
-            btn_actualizar.text = "Actualizar a OCO"
-            btn_actualizar.visible = True
-        elif estado == "oco":
-            txt_num_factura.visible = True
-            btn_actualizar.text = "Actualizar a FACTURADO"
-            btn_actualizar.visible = True
+        if not es_solo_lectura:
+            if estado == "cotizado":
+                txt_orden_compra.visible = True
+                txt_nota_venta.visible = True
+                btn_actualizar.text = "Actualizar a OCO"
+                btn_actualizar.visible = True
+            elif estado == "oco":
+                txt_num_factura.visible = True
+                btn_actualizar.text = "Actualizar a FACTURADO"
+                btn_actualizar.visible = True
 
         page.update()
 
@@ -209,10 +210,15 @@ def vista_estado_cotizaciones(page: ft.Page, sock, cambiar_vista_func):
             ft.Divider(height=10, color=ft.Colors.GREY_700),
             txt_orden_compra, txt_nota_venta, txt_num_factura, btn_actualizar
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=15, bgcolor=ft.Colors.GREY_900, border_radius=8, width=260
+        padding=15, bgcolor=ft.Colors.GREY_900, border_radius=8, width=260,
+        visible=not es_solo_lectura
     )
 
-    btn_volver = ft.TextButton("Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
+    rol_actual = page.session.store.get("rol")
+    if rol_actual in ("contador"):
+        btn_volver = ft.TextButton("← Volver al Menú Principal", on_click=lambda _: cambiar_vista_func("dashboard"))
+    else:
+        btn_volver = ft.TextButton("← Volver al Menú de Ventas", on_click=lambda _: cambiar_vista_func("ventas"))
 
     return ft.Container(
         content=ft.Column([

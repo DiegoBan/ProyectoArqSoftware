@@ -40,7 +40,7 @@ try:
                 datos_json = actualizar_cotizacion(db, datos_json)
                 send_message(sock, "front", datos_json)
             case "ver_detalles":
-                datos_json = ver_detalles(db, datos_json)
+                datos_json = ver_detalles(db)
                 send_message(sock, "front", datos_json)
                     
 except Exception as e:

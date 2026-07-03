@@ -22,7 +22,7 @@ def vista_empleados(page: ft.Page, sock, cambiar_vista_func):
     dropdown = ft.Dropdown(
         label="Nuevo Rol",
         width=200,
-        options=[ft.dropdown.Option(r) for r in ["admin", "vendedor", "bodeguero", "finanzas"]]
+        options=[ft.dropdown.Option(r) for r in ["admin", "vendedor", "contador"]]
     )
 
     def btn_actualizar_click(e):

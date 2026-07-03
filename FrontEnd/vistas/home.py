@@ -17,17 +17,17 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
     if rol_usuario == "admin":
         # Este botón SOLO se agrega a la pantalla si el rol es exactamente 'admin'
         btn_crear_user = ft.Button(
-            "Administración: Crear Nuevo Usuario", 
+            "Administración: Crear Nuevo Usuario",
             icon="person_add",
             on_click=lambda _: cambiar_vista_func("crear_usuario"),
             width=350, height=45
         )
         controles_menu.append(btn_crear_user)
         controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
-        
+
         # --- NUEVO Botón: Gestión de Productos ---
         btn_productos = ft.Button(
-            "Administración: Gestión de Productos", 
+            "Administración: Gestión de Productos",
             icon="shopping_bag", # Icono de bolsa/producto
             on_click=lambda _: cambiar_vista_func("productos"), # Redirige a la vista de productos
             width=350, height=45
@@ -37,7 +37,7 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
 
         # --- NUEVO Botón: Módulo de Ventas / Cotizaciones ---
         btn_ventas = ft.Button(
-            "Administración: Ventas y Cotizaciones", 
+            "Administración: Ventas y Cotizaciones",
             icon="point_of_sale", # Icono de caja registradora / ventas
             on_click=lambda _: cambiar_vista_func("ventas"), # Redirige a la vista de ventas
             width=350, height=45
@@ -56,6 +56,27 @@ def vista_dashboard(page: ft.Page, sock, cambiar_vista_func):
         width=350, height=45)
 
         controles_menu.append(btn_clientes)
+        controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
+
+    elif rol_usuario == "vendedor":
+        btn_ventas = ft.Button(
+            "Administración: Ventas y Cotizaciones",
+            icon="point_of_sale", # Icono de caja registradora / ventas
+            on_click=lambda _: cambiar_vista_func("ventas"), # Redirige a la vista de ventas
+            width=350, height=45
+        )
+        controles_menu.append(btn_ventas)
+        controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
+
+    elif rol_usuario == "contador":
+        # Contabilidad: solo lectura — puede consultar el estado de cotizaciones y facturas
+        btn_cotizaciones = ft.Button(
+            "Consultar Estado de Cotizaciones y Facturas",
+            icon="receipt_long",
+            on_click=lambda _: cambiar_vista_func("estado_cotizaciones"),
+            width=350, height=45
+        )
+        controles_menu.append(btn_cotizaciones)
         controles_menu.append(ft.Divider(height=10, color=ft.Colors.TRANSPARENT))
    
 

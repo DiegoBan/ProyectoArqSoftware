@@ -131,7 +131,7 @@ def actualizar_cotizacion(db, datos_json):
             "mensaje": "Error interno del servidor"
         })
         
-def ver_detalles(db, datos_json=None):
+def ver_detalles(db):
     # FIX: el router (manejo.py) llama ver_detalles(db, datos_json) con 2
     # argumentos, pero esta función solo aceptaba "db". Eso lanzaba
     # TypeError en cada intento, antes de llegar siquiera a ejecutar la query.

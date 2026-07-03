@@ -1,6 +1,7 @@
 import flet as ft
 import json
 from soa_lib import send_message
+from vistas.crearuser import _rut_valido, _formatear_rut
 
 LISTA_CLIENTES = []
 
@@ -15,8 +16,37 @@ def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
     # Estado de edición: si hay un cliente seleccionado, guardamos su rut original
     modo_edicion = {"rut_original": None}
 
-    txt_rut = ft.TextField(label="RUT Empresa", width=300, disabled=not es_admin)
+    txt_rut = ft.TextField(
+        label="RUT Empresa (ej: 12.345.678-9)",
+        width=300,
+        disabled=not es_admin,
+        max_length=12,
+        hint_text="12.345.678-9",
+        input_filter=ft.InputFilter(allow=True, regex_string=r"[\d\.\-kK]"),
+    )
     txt_nombre = ft.TextField(label="Razón Social", width=300, disabled=not es_admin)
+
+    def validar_rut_empresa(e):
+        if txt_rut.disabled:
+            return
+        raw = txt_rut.value or ""
+        formateado = _formatear_rut(raw)
+        if formateado != raw:
+            txt_rut.value = formateado
+        valor = txt_rut.value.strip()
+        if valor == "" or len(valor.replace(".", "").replace("-", "")) < 2:
+            txt_rut.error_text = None
+            txt_rut.suffix_icon = None
+        elif _rut_valido(valor):
+            txt_rut.error_text = None
+            txt_rut.suffix_icon = ft.Icons.CHECK_CIRCLE
+            txt_rut.suffix_style = ft.TextStyle(color=ft.Colors.GREEN_400)
+        else:
+            txt_rut.error_text = "RUT inválido"
+            txt_rut.suffix_icon = ft.Icons.ERROR
+        page.update()
+
+    txt_rut.on_change = validar_rut_empresa
     lbl_modo = ft.Text("", color=ft.Colors.BLUE_300, size=12)
 
     def limpiar_formulario():
@@ -42,13 +72,23 @@ def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
             page.update()
             return
 
+        # Validar RUT solo al crear (en edición el campo está deshabilitado)
+        if modo_edicion["rut_original"] is None and not _rut_valido(txt_rut.value):
+            page.overlay.append(ft.SnackBar(ft.Text("El RUT ingresado no es válido"), bgcolor=ft.Colors.RED_700))
+            page.overlay[-1].open = True
+            page.update()
+            return
+
+        rut_limpio = txt_rut.value.replace(".", "").replace("-", "").upper().replace("K", "0")
+        rut_limpio = int(rut_limpio) if rut_limpio else 0
+
         # Decidir acción según si estamos editando o creando
         if modo_edicion["rut_original"] is not None:
             accion = "actualizar_cliente"
             payload = {
                 "accion": accion,
                 "user_rut": page.session.store.get("rut"),
-                "rut_empresa": modo_edicion["rut_original"],
+                "rut_empresa": int(modo_edicion["rut_original"].replace(".", "").replace("-", "").upper().replace("K", "0")),
                 "nombre": txt_nombre.value
             }
         else:
@@ -56,7 +96,7 @@ def vista_clientes(page: ft.Page, sock, cambiar_vista_func):
             payload = {
                 "accion": accion,
                 "user_rut": page.session.store.get("rut"),
-                "rut_empresa": txt_rut.value,
+                "rut_empresa": rut_limpio,
                 "nombre": txt_nombre.value
             }
 

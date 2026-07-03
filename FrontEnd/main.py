@@ -115,24 +115,26 @@ def main(page: ft.Page):
                         import vistas.nueva_cotizacion as vnc
                         import vistas.clientes as vc
                         if vista_actual["nombre"] == "nueva_cotizacion":
-                            # Respuesta solicitada por nueva_cotizacion para el dropdown
                             vnc.CLIENTES_PARA_COT = respuesta["clientes"]
                             if vnc.PRODUCTOS_PARA_COT is not None:
                                 cambiar_vista("nueva_cotizacion")
                         else:
-                            # Respuesta normal de gestión de clientes
                             vc.LISTA_CLIENTES = respuesta["clientes"]
                             vc.YA_CARGADO = True
                             cambiar_vista("clientes")
-
                     elif "productos" in respuesta:
                         import vistas.nueva_cotizacion as vnc
                         if vista_actual["nombre"] == "nueva_cotizacion":
-                            # Respuesta solicitada por nueva_cotizacion para el dropdown
                             vnc.PRODUCTOS_PARA_COT = respuesta["productos"]
                             if vnc.CLIENTES_PARA_COT is not None:
                                 cambiar_vista("nueva_cotizacion")
-
+                    #elif "ultimo_cot" in respuesta:
+                    #    import vistas.nueva_cotizacion as vnc
+                    #    if vista_actual["nombre"] == "nueva_cotizacion":
+                    #        vnc.ULTIMO_COT = respuesta["ultimo_cot"]
+                    #        if vnc.CLIENTES_PARA_COT is not None and vnc.PRODUCTOS_PARA_COT is not None:
+                    #            cambiar_vista("nueva_cotizacion")
+    
                     elif isinstance(respuesta.get("detalles"), list):
                         # Respuesta de "ver_detalles": detalles es una LISTA de
                         # cotizaciones. (Distinto de actualizar/registrar_cliente,
@@ -177,11 +179,15 @@ def main(page: ft.Page):
                             import vistas.historial_ventas as vh
                             vnc.CLIENTES_PARA_COT = None
                             vnc.PRODUCTOS_PARA_COT = None
+                            vnc.ULTIMO_COT = None
                             # Resetear historial para que la próxima vez que el
                             # usuario entre a "Estado de Cotizaciones" pida los
                             # datos frescos al bus e incluya la nueva cotización.
                             vh.LISTA_COTIZACIONES = []
                             vh.YA_CARGADO = False
+                            # Pedir el nuevo último COT para que la próxima vez que
+                            # el usuario abra nueva_cotizacion el número sea correcto.
+                            send_message(sock, "manej", json.dumps({"accion": "numero_cotizacion"}))
                             cambiar_vista("ventas")
                         else:
                             if page.controls:

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 CREATE TABLE IF NOT EXISTS clientes (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    rut_empresa NUMERIC(9, 0) UNIQUE NOT NULL
+    rut_empresa VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS productos (
